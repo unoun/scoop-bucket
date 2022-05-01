@@ -18,5 +18,8 @@
             "LimeChat2.exe",
             "LimeChat 2"
         ]
+    ],
+    "persist": [
+        "users"
     ]
 }
