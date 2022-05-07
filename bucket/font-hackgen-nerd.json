@@ -56,11 +56,15 @@
             "    Remove-ItemProperty -Path $regPath -Name $fontName -ErrorAction SilentlyContinue",
             "}",
             "if ((Get-Service 'FontCache').Status -eq 'Running') {",
-            "    Write-Host \"Restart FontCache service\"",
+            "    info \"Restart FontCache service\"",
             "    Restart-Service FontCache",
             "}",
             "Get-ChildItem $dir -Filter \"*.ttf\" -Recurse | ForEach-Object {",
-            "    Remove-Item \"$fontsDir\\$($_.Name)\" -ErrorAction SilentlyContinue",
+            "    $fontFile = \"$fontsDir\\$($_.Name)\"",
+            "    Remove-Item $fontFile -ErrorAction SilentlyContinue",
+            "    if (Test-Path $fontFile) {",
+            "        warn \"Couldn't remove '$fontFile'; it may be in use.\"",
+            "    }",
             "}"
         ]
     }
