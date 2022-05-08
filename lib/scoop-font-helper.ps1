@@ -76,15 +76,11 @@ function Install-Font($dir) {
     Get-ChildItem $dir -Recurse | Where-Object {
         $_.Extension -eq '.ttf' -or $_.Extension -eq '.ttc'
     } | ForEach-Object {
-        switch ($_.Extension) {
-            '.ttf' {
-                $fontName = Get-TTFName($_)
-            }
-            '.ttc' {
-                $fontName = Get-TTCName($_)
-            }
+        if ($_.Extension -eq '.ttf') {
+            $fontName = Get-TTFName($_)
+        } elseif ($_.Extension -eq '.ttc') {
+            $fontName = Get-TTCName($_)
         }
-        $fontName = Get-FontName($_)
         info "Installing font $($_.Name) -> $fontName"
         Copy-Item $_.FullName -Destination $fontsDir
         New-ItemProperty -Path $regPath -Name $fontName -Value "$fontsDir\$($_.Name)" -Force | Out-Null
@@ -98,13 +94,10 @@ function Uninstall-Font($dir) {
     Get-ChildItem $dir -Recurse | Where-Object {
         $_.Extension -eq '.ttf' -or $_.Extension -eq '.ttc'
     } | ForEach-Object {
-        switch ($_.Extension) {
-            '.ttf' {
-                $fontName = Get-TTFName($_)
-            }
-            '.ttc' {
-                $fontName = Get-TTCName($_)
-            }
+        if ($_.Extension -eq '.ttf') {
+            $fontName = Get-TTFName($_)
+        } elseif ($_.Extension -eq '.ttc') {
+            $fontName = Get-TTCName($_)
         }
         info "Uninstalling font $($_.Name) -> $fontName"
         Remove-ItemProperty -Path $regPath -Name $fontName -ErrorAction SilentlyContinue
