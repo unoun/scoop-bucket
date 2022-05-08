@@ -19,7 +19,7 @@ function Get-FontInfo([System.IO.FileInfo] $file, $index) {
 
 function Get-NumberOfFonts([System.IO.FileInfo] $file) {
     try {
-        $fr = [System.IO.File]::Open($file,
+        $fr = [System.IO.File]::Open($file.FullName,
             [System.IO.FileMode]::Open,
             [System.IO.FileAccess]::Read,
             [System.IO.FileShare]::ReadWrite + [System.IO.FileShare]::Delete)

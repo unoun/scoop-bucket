@@ -1,8 +1,8 @@
 {
-    "version": "1.0.1",
+    "version": "1.0.2",
     "description": "scoop helper functions",
     "homepage": "https://github.com/unoun/scoop-bucket/",
     "license": "CC0-1.0",
     "url": "https://raw.githubusercontent.com/unoun/scoop-bucket/main/lib/scoop-font-helper.ps1",
-    "hash": "78f24421df2ae86200fcb8d97beaa0fff3c465c0d4425b85934541751f7577aa"
+    "hash": "4a82886edfb8a36391807881c136f6c67d8be70a5f0745dc7b3d1f804dd2bebe"
 }
