@@ -1,0 +1,28 @@
+{
+    "version": "6.0.1",
+    "description": "IBM Plex typeface",
+    "homepage": "https://github.com/IBM/plex",
+    "license": "OFL-1.1-RFN",
+    "url": "https://github.com/IBM/plex/releases/download/v6.0.1/OpenType.zip",
+    "hash": "d837e2fdfdef8eedc50d219dd3a8a093705c73c0574964069200924450fe7bd9",
+    "depends": ["sudo", "unoun/scoop-helper"],
+    "pre_install": [
+        "Remove-Item \"$dir\\OpenType\\*\\unhinted\" -Recurse"
+    ],
+    "installer": {
+        "script": [
+            "$helper = \"$(appdir scoop-helper)\\current\\scoop-font-helper.ps1\"",
+            "if (!(Test-Path $helper)) { error 'File not found'; exit 1 }",
+            ". $helper",
+            "Install-Font($dir)"
+        ]
+    },
+    "uninstaller": {
+        "script": [
+            "$helper = \"$(appdir scoop-helper)\\current\\scoop-font-helper.ps1\"",
+            "if (!(Test-Path $helper)) { error 'File not found'; exit 1 }",
+            ". $helper",
+            "Uninstall-Font($dir)"
+        ]
+    }
+}
