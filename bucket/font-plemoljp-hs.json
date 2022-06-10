@@ -1,11 +1,14 @@
 {
-    "version": "1.2.4",
+    "version": "1.2.5",
     "description": "Japanese font based on IBM Plex (Hidden Space version)",
     "homepage": "https://github.com/yuru7/PlemolJP",
     "license": "OFL-1.1-RFN",
-    "url": "https://github.com/yuru7/PlemolJP/releases/download/v1.2.4/PlemolJP_HS_v1.2.4.zip",
-    "hash": "e2399754b087409fe8d4f6ceeeb8bb1d68c835ba88347899fd695b59cf1c1e12",
-    "depends": ["sudo", "unoun/scoop-helper"],
+    "url": "https://github.com/yuru7/PlemolJP/releases/download/v1.2.5/PlemolJP_HS_v1.2.5.zip",
+    "hash": "31901129157dac2f96f3be415980be5194a1d802e882688bf6aca64b52bd0385",
+    "depends": [
+        "sudo",
+        "unoun/scoop-helper"
+    ],
     "installer": {
         "script": [
             "$helper = \"$(appdir scoop-helper)\\current\\scoop-font-helper.ps1\"",
@@ -21,5 +24,9 @@
             ". $helper",
             "Uninstall-Font($dir)"
         ]
+    },
+    "checkver": "github",
+    "autoupdate": {
+        "url": "https://github.com/yuru7/PlemolJP/releases/download/v$version/PlemolJP_HS_v$version.zip"
     }
 }
