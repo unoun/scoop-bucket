@@ -17,5 +17,9 @@
     ],
     "persist": [
         "EnablePortableMode.txt"
-    ]
+    ],
+    "checkver": {
+        "url": "https://gitlab.com/api/v4/projects/12653927/releases",
+        "regex": "\"name\":\"([\\d.]+)\".*\\(/uploads/(?<zip>[0-9a-z]{32})/Bz[\\d]+Portable\\.zip\\)"
+    }
 }

@@ -21,5 +21,8 @@
             ". $helper",
             "Uninstall-Font($dir)"
         ]
+    },
+    "checkver": {
+        "regex": "<h3><a href=\"\\./files/ricty_diminished-([\\d.]+)\\.tar\\.gz\">\\1"
     }
 }

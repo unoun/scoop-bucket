@@ -21,5 +21,8 @@
     ],
     "persist": [
         "users"
-    ]
+    ],
+    "checkver": {
+        "regex": "_x64\\.exe\">LimeChat ([\\d.]+) 64bit"
+    }
 }

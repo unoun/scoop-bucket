@@ -18,5 +18,9 @@
             "sakura.exe",
             "SAKURA Editor"
         ]
-    ]
+    ],
+    "checkver": {
+        "url": "https://github.com/sakura-editor/sakura/releases/latest",
+        "regex": "/releases/tag/(?:v|V)?([\\d.]+)"
+    }
 }

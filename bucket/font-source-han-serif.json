@@ -21,5 +21,9 @@
             ". $helper",
             "Uninstall-Font($dir)"
         ]
+    },
+    "checkver": {
+        "url": "https://github.com/adobe-fonts/source-han-serif/releases/latest",
+        "regex": "/releases/tag/(?:v|V)?([\\d.R]+)"
     }
 }
