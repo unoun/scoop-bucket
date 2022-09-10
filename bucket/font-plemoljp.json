@@ -1,10 +1,10 @@
 {
-    "version": "1.2.5",
+    "version": "1.2.7",
     "description": "Japanese font based on IBM Plex",
     "homepage": "https://github.com/yuru7/PlemolJP",
     "license": "OFL-1.1-RFN",
-    "url": "https://github.com/yuru7/PlemolJP/releases/download/v1.2.5/PlemolJP_v1.2.5.zip",
-    "hash": "96d5cc0e687450e91aa25c6d29fceaa2bff935e454f9a7f468780699ed57fd23",
+    "url": "https://github.com/yuru7/PlemolJP/releases/download/v1.2.7/PlemolJP_v1.2.7.zip",
+    "hash": "e6a74af09fa2c8a61a979b2c5c3d43302643a677bccad0a04e47173a8bf6735e",
     "depends": [
         "sudo",
         "unoun/scoop-helper"
