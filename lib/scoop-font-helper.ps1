@@ -73,7 +73,18 @@ function Get-TTCName([System.IO.FileInfo] $file) {
     }
     return $fontName
 }
- 
+
+function Get-FontName([System.IO.FileInfo] $file) {
+    if ($_.Extension -eq '.otf') {
+        $fontName = Get-OTFName($file)
+    } elseif ($_.Extension -eq '.ttf') {
+        $fontName = Get-TTFName($file)
+    } elseif ($_.Extension -eq '.ttc') {
+        $fontName = Get-TTCName($file)
+    }
+    return $fontName
+}
+
 function Install-Font($dir) {
     $fontsDir = "$env:LOCALAPPDATA\Microsoft\Windows\Fonts"
     $regPath = "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
@@ -81,16 +92,22 @@ function Install-Font($dir) {
     Get-ChildItem $dir -Recurse | Where-Object {
         $_.Extension -eq '.otf' -or $_.Extension -eq '.ttf' -or $_.Extension -eq '.ttc'
     } | ForEach-Object {
-        if ($_.Extension -eq '.otf') {
-            $fontName = Get-OTFName($_)
-        } elseif ($_.Extension -eq '.ttf') {
-            $fontName = Get-TTFName($_)
-        } elseif ($_.Extension -eq '.ttc') {
-            $fontName = Get-TTCName($_)
-        }
+        $fontName = Get-FontName($_)
         info "Installing font $($_.Name) -> $fontName"
+        $fontFile = "$fontsDir\$($_.Name)"
+        Remove-Item $fontFile -ErrorAction SilentlyContinue
+        if (Test-Path $fontFile) {
+            error "Couldn't remove '$fontFile'; it may be in use."
+            exit 1
+        }
         Copy-Item $_.FullName -Destination $fontsDir
-        New-ItemProperty -Path $regPath -Name $fontName -Value "$fontsDir\$($_.Name)" -Force | Out-Null
+    }
+    Get-ChildItem $dir -Recurse | Where-Object {
+        $_.Extension -eq '.otf' -or $_.Extension -eq '.ttf' -or $_.Extension -eq '.ttc'
+    } | ForEach-Object {
+        $fontName = Get-FontName($_)
+        $fontFile = "$fontsDir\$($_.Name)"
+        New-ItemProperty -Path $regPath -Name $fontName -Value $fontFile -Force | Out-Null
     }
 }
 
@@ -101,19 +118,14 @@ function Uninstall-Font($dir) {
     Get-ChildItem $dir -Recurse | Where-Object {
         $_.Extension -eq '.otf' -or $_.Extension -eq '.ttf' -or $_.Extension -eq '.ttc'
     } | ForEach-Object {
-        if ($_.Extension -eq '.otf') {
-            $fontName = Get-OTFName($_)
-        } elseif ($_.Extension -eq '.ttf') {
-            $fontName = Get-TTFName($_)
-        } elseif ($_.Extension -eq '.ttc') {
-            $fontName = Get-TTCName($_)
-        }
+        $fontName = Get-FontName($_)
         info "Uninstalling font $($_.Name) -> $fontName"
         Remove-ItemProperty -Path $regPath -Name $fontName -ErrorAction SilentlyContinue
     }
     if ((Get-Service 'FontCache').Status -eq 'Running') {
-        info 'Restart FontCache service'
-        Restart-Service FontCache
+        info 'Stop FontCache service'
+        Stop-Service FontCache
+        (Get-Service 'FontCache').WaitForStatus('Stopped')
     }
     Get-ChildItem $dir -Recurse | Where-Object {
         $_.Extension -eq '.otf' -or $_.Extension -eq '.ttf' -or $_.Extension -eq '.ttc'
