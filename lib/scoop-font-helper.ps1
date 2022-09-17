@@ -92,8 +92,6 @@ function Install-Font($dir) {
     Get-ChildItem $dir -Recurse | Where-Object {
         $_.Extension -eq '.otf' -or $_.Extension -eq '.ttf' -or $_.Extension -eq '.ttc'
     } | ForEach-Object {
-        $fontName = Get-FontName($_)
-        info "Installing font $($_.Name) -> $fontName"
         $fontFile = "$fontsDir\$($_.Name)"
         Remove-Item $fontFile -ErrorAction SilentlyContinue
         if (Test-Path $fontFile) {
@@ -106,13 +104,14 @@ function Install-Font($dir) {
         $_.Extension -eq '.otf' -or $_.Extension -eq '.ttf' -or $_.Extension -eq '.ttc'
     } | ForEach-Object {
         $fontName = Get-FontName($_)
+        info "Installing font $($_.Name) -> $fontName"
         $fontFile = "$fontsDir\$($_.Name)"
         New-ItemProperty -Path $regPath -Name $fontName -Value $fontFile -Force | Out-Null
     }
 }
 
 function Uninstall-Font($dir) {
-    if (!(is_admin)) { error 'Use sudo'; exit 1 }
+    if (!(is_admin)) { warn 'Use sudo' }
     $fontsDir = "$env:LOCALAPPDATA\Microsoft\Windows\Fonts"
     $regPath = "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
     Get-ChildItem $dir -Recurse | Where-Object {
@@ -123,9 +122,11 @@ function Uninstall-Font($dir) {
         Remove-ItemProperty -Path $regPath -Name $fontName -ErrorAction SilentlyContinue
     }
     if ((Get-Service 'FontCache').Status -eq 'Running') {
-        info 'Stop FontCache service'
-        Stop-Service FontCache
-        (Get-Service 'FontCache').WaitForStatus('Stopped')
+        info 'Stop FontCache service (stop the service manually as needed)'
+        if (is_admin) {
+            Stop-Service FontCache
+        }
+        (Get-Service 'FontCache').WaitForStatus('Stopped', [TimeSpan]::New(0, 1, 0, 0))
     }
     Get-ChildItem $dir -Recurse | Where-Object {
         $_.Extension -eq '.otf' -or $_.Extension -eq '.ttf' -or $_.Extension -eq '.ttc'
