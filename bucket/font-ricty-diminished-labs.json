@@ -1,9 +1,9 @@
 {
     "version": "4.1.1.230208",
     "description": "Japanese font based on Inconsolata and Circle M+(LABS version)",
-    "homepage": "http://www.structure.kais.kyoto-u.ac.jp/lab/photo.html",
+    "homepage": "https://www.structure.kais.kyoto-u.ac.jp/lab/photo.html",
     "license": "OFL-1.1-no-RFN",
-    "url": "http://www.structure.kais.kyoto-u.ac.jp/lab/RictyDiminished-LASB-4.1.1.230208.zip",
+    "url": "https://www.structure.kais.kyoto-u.ac.jp/lab/RictyDiminished-LASB-4.1.1.230208.zip",
     "hash": "e2670cde9a5ce7a8f13b1728e96a77228ff83bea0def6d9a68c303fb4371c1c7",
     "depends": [
         "sudo",
@@ -27,10 +27,10 @@
         ]
     },
     "checkver": {
-        "url": "http://www.structure.kais.kyoto-u.ac.jp/lab/materials.html",
+        "url": "https://www.structure.kais.kyoto-u.ac.jp/lab/materials.html",
         "regex": "<p><a href=\"RictyDiminished-LASB-([\\d.]+)\\.zip\""
     },
     "autoupdate": {
-        "url": "http://www.structure.kais.kyoto-u.ac.jp/lab/RictyDiminished-LASB-$version.zip"
+        "url": "https://www.structure.kais.kyoto-u.ac.jp/lab/RictyDiminished-LASB-$version.zip"
     }
 }
