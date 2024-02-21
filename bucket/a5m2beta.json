@@ -1,12 +1,12 @@
 {
-    "version": "2.19.0_beta26",
+    "version": "2.19.1_beta4",
     "description": "A5:SQL Mk-2 is a free SQL development tool(Beta Edition)",
     "homepage": "https://a5m2.mmatsubara.com/beta/",
     "license": "Freeware",
     "architecture": {
         "64bit": {
-            "url": "https://a5m2.mmatsubara.com/beta/a5m2_2.19.0_beta26_x64.zip",
-            "hash": "062827d3bf9eec3e3ff1b9592c30a57eee59e928b57fdb6b1fa002870d69ab4f"
+            "url": "https://a5m2.mmatsubara.com/beta/a5m2_2.19.1_beta4_x64.zip",
+            "hash": "46b1c991eaebaf9b97ce78d44dff74eb6826daa6480b9a29863a52543b97b4af"
         }
     },
     "bin": [
