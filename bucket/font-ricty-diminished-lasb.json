@@ -6,7 +6,6 @@
     "url": "https://www.structure.kais.kyoto-u.ac.jp/lab/RictyDiminished-LASB-230228.zip",
     "hash": "839465d17a027eedab51d19cb16652d276c44bf17d5c34052d4a80e03e7c9d29",
     "depends": [
-        "sudo",
         "unoun/scoop-helper"
     ],
     "pre_install": "if ((Test-Path $(appdir font-ricty-diminished))) { error 'Uninstall font-ricty-diminished'; exit 1 }",
