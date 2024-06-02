@@ -111,7 +111,6 @@ function Install-Font($dir) {
 }
 
 function Uninstall-Font($dir) {
-    if (!(is_admin)) { warn 'Use sudo' }
     $fontsDir = "$env:LOCALAPPDATA\Microsoft\Windows\Fonts"
     $regPath = "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
     Get-ChildItem $dir -Recurse | Where-Object {
@@ -126,7 +125,11 @@ function Uninstall-Font($dir) {
         if (is_admin) {
             Stop-Service FontCache
         }
-        (Get-Service 'FontCache').WaitForStatus('Stopped', [TimeSpan]::New(0, 1, 0, 0))
+        try {
+            (Get-Service 'FontCache').WaitForStatus('Stopped', [TimeSpan]::New(0, 0, 1, 0))
+        } catch [System.ServiceProcess.TimeoutException] {
+            warn "Timeout and continue"
+        }
     }
     Get-ChildItem $dir -Recurse | Where-Object {
         $_.Extension -eq '.otf' -or $_.Extension -eq '.ttf' -or $_.Extension -eq '.ttc'
@@ -134,7 +137,8 @@ function Uninstall-Font($dir) {
         $fontFile = "$fontsDir\$($_.Name)"
         Remove-Item $fontFile -ErrorAction SilentlyContinue
         if (Test-Path $fontFile) {
-            warn "Couldn't remove '$fontFile'; it may be in use."
+            error "Couldn't remove '$fontFile'; it may be in use."
+            exit 1
         }
     }
 }
