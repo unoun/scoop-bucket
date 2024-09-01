@@ -1,3 +1,38 @@
+function Get-FontFamilies([System.IO.FileInfo] $file) {
+    $job = Start-Job -ScriptBlock {
+        Add-Type -AssemblyName System.Drawing
+        $col = [System.Drawing.Text.PrivateFontCollection]::new()
+        $col.AddFontFile($using:file.FullName)
+        $list = $col.Families.Name
+        $col.Dispose()
+        return $list
+    }
+    Wait-Job -Job $job | Out-Null
+    $ret = Receive-Job $job
+    Remove-Job $job
+    return $ret
+}
+
+function Get-InstalledFontFamilies() {
+    $job = Start-Job -ScriptBlock {
+        Add-Type -AssemblyName System.Drawing
+        return [System.Drawing.FontFamily]::Families.Name
+    }
+    Wait-Job -Job $job | Out-Null
+    $ret = Receive-Job $job
+    Remove-Job $job
+    return $ret
+}
+
+function Get-AlreadyInstalledFontFamilies([String[]] $installed, [String[]]$list) {
+    $ret = $list | ForEach-Object {
+        if ($installed.Contains($_)) {
+            $_
+        }
+    }
+    return $ret
+}
+
 function Get-FontInfo([System.IO.FileInfo] $file, $index) {
     $job = Start-Job -ScriptBlock {
         Add-Type -AssemblyName PresentationCore
@@ -52,7 +87,7 @@ function Get-TTFName([System.IO.FileInfo] $file) {
 }
 
 function Get-TTCName([System.IO.FileInfo] $file) {
-    $numFonts = Get-NumberOfFonts($file)
+    $numFonts = Get-NumberOfFonts $file
     $i = 0
     $fontList = @()
     while ($i -lt $numFonts) {
@@ -75,12 +110,12 @@ function Get-TTCName([System.IO.FileInfo] $file) {
 }
 
 function Get-FontName([System.IO.FileInfo] $file) {
-    if ($_.Extension -eq '.otf') {
-        $fontName = Get-OTFName($file)
-    } elseif ($_.Extension -eq '.ttf') {
-        $fontName = Get-TTFName($file)
-    } elseif ($_.Extension -eq '.ttc') {
-        $fontName = Get-TTCName($file)
+    if ($file.Extension -eq '.otf') {
+        $fontName = Get-OTFName $file
+    } elseif ($file.Extension -eq '.ttf') {
+        $fontName = Get-TTFName $file
+    } elseif ($file.Extension -eq '.ttc') {
+        $fontName = Get-TTCName $file
     }
     return $fontName
 }
@@ -88,6 +123,7 @@ function Get-FontName([System.IO.FileInfo] $file) {
 function Install-Font($dir) {
     $fontsDir = "$env:LOCALAPPDATA\Microsoft\Windows\Fonts"
     $regPath = "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
+    $installedFontFamilies = Get-InstalledFontFamilies
     New-Item $fontsDir -ItemType Directory -ErrorAction SilentlyContinue
     Get-ChildItem $dir -Recurse | Where-Object {
         $_.Extension -eq '.otf' -or $_.Extension -eq '.ttf' -or $_.Extension -eq '.ttc'
@@ -98,12 +134,18 @@ function Install-Font($dir) {
             error "Couldn't remove '$fontFile'; it may be in use."
             exit 1
         }
+        $fontFamilies = Get-FontFamilies $_
+        $alreadyInstalledFontFamilies = Get-AlreadyInstalledFontFamilies $installedFontFamilies $fontFamilies
+        if ($alreadyInstalledFontFamilies -gt 0) {
+            error "Already exists font '$($alreadyInstalledFontFamilies | Select-Object -first 1)' in '$($_.FullName)'"
+            exit 1
+        }
         Copy-Item $_.FullName -Destination $fontsDir
     }
     Get-ChildItem $dir -Recurse | Where-Object {
         $_.Extension -eq '.otf' -or $_.Extension -eq '.ttf' -or $_.Extension -eq '.ttc'
     } | ForEach-Object {
-        $fontName = Get-FontName($_)
+        $fontName = Get-FontName $_
         info "Installing font $($_.Name) -> $fontName"
         $fontFile = "$fontsDir\$($_.Name)"
         New-ItemProperty -Path $regPath -Name $fontName -Value $fontFile -Force | Out-Null
@@ -116,7 +158,7 @@ function Uninstall-Font($dir) {
     Get-ChildItem $dir -Recurse | Where-Object {
         $_.Extension -eq '.otf' -or $_.Extension -eq '.ttf' -or $_.Extension -eq '.ttc'
     } | ForEach-Object {
-        $fontName = Get-FontName($_)
+        $fontName = Get-FontName $_
         info "Uninstalling font $($_.Name) -> $fontName"
         Remove-ItemProperty -Path $regPath -Name $fontName -ErrorAction SilentlyContinue
     }
