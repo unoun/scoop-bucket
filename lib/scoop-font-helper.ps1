@@ -31,10 +31,10 @@ function Get-NumberOfFonts([System.IO.FileInfo] $file) {
         }
         $ret = [BitConverter]::ToUInt32($b, 0)
     } finally {
-        if ($br -ne $null) {
+        if ($null -ne $br) {
             $br.Close()
         }
-        if ($fr -ne $null) {
+        if ($null -ne $fr) {
             $fr.Close()
         }
     }
