@@ -129,15 +129,15 @@ function Install-Font($dir) {
         $_.Extension -eq '.otf' -or $_.Extension -eq '.ttf' -or $_.Extension -eq '.ttc'
     } | ForEach-Object {
         $fontFile = "$fontsDir\$($_.Name)"
-        Remove-Item $fontFile -ErrorAction SilentlyContinue
-        if (Test-Path $fontFile) {
-            error "Couldn't remove '$fontFile'; it may be in use."
-            exit 1
-        }
         $fontFamilies = Get-FontFamilies $_
         $alreadyInstalledFontFamilies = Get-AlreadyInstalledFontFamilies $installedFontFamilies $fontFamilies
         if ($alreadyInstalledFontFamilies -gt 0) {
             error "Already exists font '$($alreadyInstalledFontFamilies | Select-Object -first 1)' in '$($_.FullName)'"
+            exit 1
+        }
+        Remove-Item $fontFile -ErrorAction SilentlyContinue
+        if (Test-Path $fontFile) {
+            error "Couldn't remove '$fontFile'; it may be in use."
             exit 1
         }
         Copy-Item $_.FullName -Destination $fontsDir
