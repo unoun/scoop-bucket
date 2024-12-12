@@ -1,13 +1,18 @@
 {
-    "version": "2.9.0",
+    "version": "2.9.1",
     "description": "Japanese font based on Hack and GenJyuu-Gothic",
     "homepage": "https://github.com/yuru7/HackGen",
     "license": "OFL-1.1-RFN",
-    "url": "https://github.com/yuru7/HackGen/releases/download/v2.9.0/HackGen_v2.9.0.zip",
-    "hash": "123b2179866f5a291c15cf34a83fdce6ac202e2fe6ad27fbd9ddd4f5bff23c65",
-    "depends": [
-        "unoun/scoop-helper"
+    "url": [
+        "https://github.com/yuru7/HackGen/releases/download/v2.9.1/HackGen_v2.9.1.zip",
+        "https://github.com/yuru7/HackGen/releases/download/v2.9.1/HackGen_NF_v2.9.1.zip"
     ],
+    "hash": [
+        "66f2f00fb7ae00f098fb1683d0a665373f5900f9aa1447b273d70e86a868ec77",
+        "1fd174866c7bcbe1cc09ebef74f9246a21664fedbb9c9ced349a328ab6357f0d"
+    ],
+    "depends": "unoun/scoop-helper",
+    "pre_install": "if ((Test-Path $(appdir font-hackgen-nerd))) { error 'Uninstall font-hackgen-nerd'; exit 1 }",
     "installer": {
         "script": [
             "$helper = \"$(appdir scoop-helper)\\current\\scoop-font-helper.ps1\"",
@@ -26,6 +31,9 @@
     },
     "checkver": "github",
     "autoupdate": {
-        "url": "https://github.com/yuru7/HackGen/releases/download/v$version/HackGen_v$version.zip"
+        "url": [
+            "https://github.com/yuru7/HackGen/releases/download/v$version/HackGen_v$version.zip",
+            "https://github.com/yuru7/HackGen/releases/download/v$version/HackGen_NF_v$version.zip"
+        ]
     }
 }
