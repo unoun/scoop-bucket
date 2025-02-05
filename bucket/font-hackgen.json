@@ -1,15 +1,15 @@
 {
-    "version": "2.9.1",
+    "version": "2.10.0",
     "description": "Japanese font based on Hack and GenJyuu-Gothic",
     "homepage": "https://github.com/yuru7/HackGen",
     "license": "OFL-1.1-RFN",
     "url": [
-        "https://github.com/yuru7/HackGen/releases/download/v2.9.1/HackGen_v2.9.1.zip",
-        "https://github.com/yuru7/HackGen/releases/download/v2.9.1/HackGen_NF_v2.9.1.zip"
+        "https://github.com/yuru7/HackGen/releases/download/v2.10.0/HackGen_v2.10.0.zip",
+        "https://github.com/yuru7/HackGen/releases/download/v2.10.0/HackGen_NF_v2.10.0.zip"
     ],
     "hash": [
-        "66f2f00fb7ae00f098fb1683d0a665373f5900f9aa1447b273d70e86a868ec77",
-        "1fd174866c7bcbe1cc09ebef74f9246a21664fedbb9c9ced349a328ab6357f0d"
+        "ed182e2a4b95792d94dea7932f6b45280b5ae353651be249d5f6b7867b788db7",
+        "f8abd483d5edfad88a78ed511978f43c83b43c48e364aa29ebe4a68217474428"
     ],
     "depends": "unoun/scoop-helper",
     "pre_install": "if ((Test-Path $(appdir font-hackgen-nerd))) { error 'Uninstall font-hackgen-nerd'; exit 1 }",
