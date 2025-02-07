@@ -1,0 +1,8 @@
+{
+    "policies": {
+        "DisableAppUpdate": true,
+        "DisableDefaultBrowserAgent": true,
+        "DisableTelemetry": true,
+        "DontCheckDefaultBrowser": true
+    }
+}
