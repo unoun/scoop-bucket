@@ -24,7 +24,7 @@ function Get-InstalledFontFamilies() {
     return $ret
 }
 
-function Get-AlreadyInstalledFontFamilies([String[]] $installed, [String[]]$list) {
+function Get-AlreadyInstalledFontFamilies([String[]] $installed, [String[]] $list) {
     $ret = $list | ForEach-Object {
         if ($installed.Contains($_)) {
             $_
@@ -33,17 +33,17 @@ function Get-AlreadyInstalledFontFamilies([String[]] $installed, [String[]]$list
     return $ret
 }
 
-function Get-FontInfo([System.IO.FileInfo] $file, $index) {
+function Get-FontInfo([System.IO.FileInfo] $file, [int] $index) {
     $job = Start-Job -ScriptBlock {
         Add-Type -AssemblyName PresentationCore
         $uri = [UriBuilder]::new($using:file.FullName)
         $uri.Fragment = $using:index
         $font = [Windows.Media.GlyphTypeface]::new($uri.Uri)
         return @{
-            'FamilyName' = $font.FamilyNames['en-US']
-            'FaceName' = $font.FaceNames['en-US']
+            'FamilyName'      = $font.FamilyNames['en-US']
+            'FaceName'        = $font.FaceNames['en-US']
             'Win32FamilyName' = $font.Win32FamilyNames['en-US']
-            'Win32FaceName' = $font.Win32FaceNames['en-US']
+            'Win32FaceName'   = $font.Win32FaceNames['en-US']
         }
     }
     Wait-Job -Job $job | Out-Null
@@ -59,13 +59,14 @@ function Get-NumberOfFonts([System.IO.FileInfo] $file) {
             [System.IO.FileAccess]::Read,
             [System.IO.FileShare]::ReadWrite + [System.IO.FileShare]::Delete)
         $br = [System.IO.BinaryReader]::new($fr)
-        $br.ReadBytes(4+2+2) | Out-Null
+        $br.ReadBytes(4 + 2 + 2) | Out-Null
         $b = $br.ReadBytes(4)
         if ([BitConverter]::IsLittleEndian) {
             [Array]::Reverse($b)
         }
         $ret = [BitConverter]::ToUInt32($b, 0)
-    } finally {
+    }
+    finally {
         if ($null -ne $br) {
             $br.Close()
         }
@@ -94,7 +95,8 @@ function Get-TTCName([System.IO.FileInfo] $file) {
         $fontInfo = Get-FontInfo $file $i
         if ("$($fontInfo.FamilyName) $($fontInfo.FaceName)" -eq $fontInfo.Win32FamilyName) {
             $fontList += $fontInfo.Win32FamilyName
-        } else {
+        }
+        else {
             $fontList += "$($fontInfo.Win32FamilyName) $($fontInfo.Win32FaceName)"
         }
         $i++
@@ -112,15 +114,77 @@ function Get-TTCName([System.IO.FileInfo] $file) {
 function Get-FontName([System.IO.FileInfo] $file) {
     if ($file.Extension -eq '.otf') {
         $fontName = Get-OTFName $file
-    } elseif ($file.Extension -eq '.ttf') {
+    }
+    elseif ($file.Extension -eq '.ttf') {
         $fontName = Get-TTFName $file
-    } elseif ($file.Extension -eq '.ttc') {
+    }
+    elseif ($file.Extension -eq '.ttc') {
         $fontName = Get-TTCName $file
     }
     return $fontName
 }
 
-function Install-Font($dir) {
+function Wait-ForCondition([ScriptBlock] $ConditionScript, [int] $TimeoutSeconds = 60) {
+    $startTime = Get-Date
+    $endTime = $startTime.AddSeconds($TimeoutSeconds)
+    $ret = @{
+        isError = $true
+        result  = 'Error'
+        value   = $null
+    }
+    try {
+        $job = Start-Job -ScriptBlock $ConditionScript
+        $Host.UI.RawUI.FlushInputBuffer()
+        while ($true) {
+            if ($Host.UI.rawui.KeyAvailable) {
+                $keyinfo = $Host.UI.rawui.ReadKey('IncludeKeyUp,NoEcho')
+                # ESC
+                if (27 -eq $keyinfo.Character) {
+                    $ret.isError = $true
+                    $ret.result = 'Cancelled'
+                    break
+                }
+            }
+            if ((Get-Date) -ge $endTime) {
+                $ret.isError = $true
+                $ret.result = 'Timeout'
+                break
+            }
+            $jobStatus = Get-Job $job.Id
+            if ($jobStatus.State -eq 'Completed') {
+                $ret.isError = $false
+                $ret.result = 'Completed'
+                $ret.value = Receive-Job $job
+                break
+            }
+            Start-Sleep -Milliseconds 500
+        }
+    }
+    finally {
+        Stop-Job $job.Id
+        Remove-Job $job
+        $Host.UI.RawUI.FlushInputBuffer()
+    }
+    return $ret
+}
+
+function Wait-ServiceStopped([String] $serviceName, [int] $timeoutSeconds) {
+    $script = [ScriptBlock] {
+        while ($true) {
+            try {
+                (Get-Service $using:serviceName).WaitForStatus('Stopped', [TimeSpan]::New(0, 0, 0, 1))
+                break
+            }
+            catch [System.ServiceProcess.TimeoutException] {
+                # loop
+            }
+        }
+        return $true
+    }
+    return Wait-ForCondition $script $timeoutSeconds
+}
+
+function Install-Font([String] $dir) {
     $fontsDir = "$env:LOCALAPPDATA\Microsoft\Windows\Fonts"
     $regPath = "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
     $installedFontFamilies = Get-InstalledFontFamilies
@@ -156,7 +220,7 @@ function Install-Font($dir) {
     }
 }
 
-function Uninstall-Font($dir) {
+function Uninstall-Font([String] $dir) {
     $fontsDir = "$env:LOCALAPPDATA\Microsoft\Windows\Fonts"
     $regPath = "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
     Get-ChildItem $dir -Recurse | Where-Object {
@@ -167,14 +231,13 @@ function Uninstall-Font($dir) {
         Remove-ItemProperty -Path $regPath -Name $fontName -ErrorAction SilentlyContinue
     }
     if ((Get-Service 'FontCache').Status -eq 'Running') {
-        info 'Stop FontCache service (stop the service manually as needed)'
+        info 'Stop FontCache service (stop the service manually as needed; ESC to cancel)'
         if (is_admin) {
             Stop-Service FontCache
         }
-        try {
-            (Get-Service 'FontCache').WaitForStatus('Stopped', [TimeSpan]::New(0, 0, 1, 0))
-        } catch [System.ServiceProcess.TimeoutException] {
-            warn "Timeout and continue"
+        $ret = Wait-ServiceStopped 'FontCache' 60
+        if ($ret.isError) {
+            warn "$($ret.result) and continue"
         }
     }
     Get-ChildItem $dir -Recurse | Where-Object {
