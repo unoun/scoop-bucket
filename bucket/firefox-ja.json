@@ -1,5 +1,5 @@
 {
-    "version": "136.0.2",
+    "version": "136.0.3",
     "description": "Firefox(ja)",
     "homepage": "https://www.mozilla.org/firefox/",
     "license": "MPL-2.0",
@@ -14,8 +14,8 @@
     ],
     "architecture": {
         "64bit": {
-            "url": "https://archive.mozilla.org/pub/firefox/releases/136.0.2/win64/ja/Firefox%20Setup%20136.0.2.exe#/dl.7z",
-            "hash": "sha512:c51afc37f01582ae3840dc6723aa9c0c79a73214491430c3340fa843458295de226fffdff199697df479b09c418a81f373b3ce862fad502d8bda774f6be18e5a"
+            "url": "https://archive.mozilla.org/pub/firefox/releases/136.0.3/win64/ja/Firefox%20Setup%20136.0.3.exe#/dl.7z",
+            "hash": "sha512:f948a7e94ffd29e5f78461e1eee1ce9f033e61d83338adeca3ec94f27f22e8b0d963b979a0b7c1c7a896c5882cacdb6a7302f2e4fa307901c619b85e9a9e0bec"
         }
     },
     "extract_dir": "core",
