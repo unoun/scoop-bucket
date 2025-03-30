@@ -1,55 +1,40 @@
-function Get-FontFamilies([System.IO.FileInfo] $file) {
-    $job = Start-Job -ScriptBlock {
-        Add-Type -AssemblyName System.Drawing
-        $col = [System.Drawing.Text.PrivateFontCollection]::new()
-        $col.AddFontFile($using:file.FullName)
-        $list = $col.Families.Name
-        $col.Dispose()
-        return $list
-    }
+function Invoke-Job([ScriptBlock] $JobScript, [Object[]] $ScriptArgumentList) {
+    $job = Start-Job -ScriptBlock $JobScript -ArgumentList $ScriptArgumentList
     Wait-Job -Job $job | Out-Null
     $ret = Receive-Job $job
     Remove-Job $job
     return $ret
+}
+
+function Get-FontFamilies ([String] $fullName) {
+    Add-Type -AssemblyName System.Drawing
+    $col = [System.Drawing.Text.PrivateFontCollection]::new()
+    $col.AddFontFile($fullName)
+    $list = $col.Families.Name
+    $col.Dispose()
+    return $list
 }
 
 function Get-InstalledFontFamilies() {
-    $job = Start-Job -ScriptBlock {
-        Add-Type -AssemblyName System.Drawing
-        return [System.Drawing.FontFamily]::Families.Name
-    }
-    Wait-Job -Job $job | Out-Null
-    $ret = Receive-Job $job
-    Remove-Job $job
-    return $ret
+    Add-Type -AssemblyName System.Drawing
+    return [System.Drawing.FontFamily]::Families.Name
 }
 
 function Get-AlreadyInstalledFontFamilies([String[]] $installed, [String[]] $list) {
-    $ret = $list | ForEach-Object {
-        if ($installed.Contains($_)) {
-            $_
-        }
-    }
-    return $ret
+    return $list | Where-Object { $installed -contains $_ }
 }
 
-function Get-FontInfo([System.IO.FileInfo] $file, [int] $index) {
-    $job = Start-Job -ScriptBlock {
-        Add-Type -AssemblyName PresentationCore
-        $uri = [UriBuilder]::new($using:file.FullName)
-        $uri.Fragment = $using:index
-        $font = [Windows.Media.GlyphTypeface]::new($uri.Uri)
-        return @{
-            'FamilyName'      = $font.FamilyNames['en-US']
-            'FaceName'        = $font.FaceNames['en-US']
-            'Win32FamilyName' = $font.Win32FamilyNames['en-US']
-            'Win32FaceName'   = $font.Win32FaceNames['en-US']
-        }
+function Get-FontInfo([String] $fullName, [int] $index) {
+    Add-Type -AssemblyName PresentationCore
+    $uri = [UriBuilder]::new($fullName)
+    $uri.Fragment = [String]$index
+    $font = [Windows.Media.GlyphTypeface]::new($uri.Uri)
+    return @{
+        'FamilyName'      = $font.FamilyNames['en-US']
+        'FaceName'        = $font.FaceNames['en-US']
+        'Win32FamilyName' = $font.Win32FamilyNames['en-US']
+        'Win32FaceName'   = $font.Win32FaceNames['en-US']
     }
-    Wait-Job -Job $job | Out-Null
-    $ret = Receive-Job $job
-    Remove-Job $job
-    return $ret
 }
 
 function Get-NumberOfFonts([System.IO.FileInfo] $file) {
@@ -69,21 +54,23 @@ function Get-NumberOfFonts([System.IO.FileInfo] $file) {
     finally {
         if ($null -ne $br) {
             $br.Close()
+            $br.Dispose()
         }
         if ($null -ne $fr) {
             $fr.Close()
+            $fr.Dispose()
         }
     }
     return $ret
 }
 
 function Get-OTFName([System.IO.FileInfo] $file) {
-    $fontInfo = Get-FontInfo $file
+    $fontInfo = Invoke-Job ${function:Get-FontInfo} $file.FullName
     return "$($fontInfo.Win32FamilyName) $($fontInfo.Win32FaceName) (OpenType)"
 }
 
 function Get-TTFName([System.IO.FileInfo] $file) {
-    $fontInfo = Get-FontInfo $file
+    $fontInfo = Invoke-Job ${function:Get-FontInfo} $file.FullName
     return "$($fontInfo.Win32FamilyName) $($fontInfo.Win32FaceName) (TrueType)"
 }
 
@@ -92,7 +79,7 @@ function Get-TTCName([System.IO.FileInfo] $file) {
     $i = 0
     $fontList = @()
     while ($i -lt $numFonts) {
-        $fontInfo = Get-FontInfo $file $i
+        $fontInfo = Invoke-Job ${function:Get-FontInfo} $file.FullName, $i
         if ("$($fontInfo.FamilyName) $($fontInfo.FaceName)" -eq $fontInfo.Win32FamilyName) {
             $fontList += $fontInfo.Win32FamilyName
         }
@@ -124,7 +111,7 @@ function Get-FontName([System.IO.FileInfo] $file) {
     return $fontName
 }
 
-function Wait-ForCondition([ScriptBlock] $ConditionScript, [int] $TimeoutSeconds = 60) {
+function Wait-ForCondition([ScriptBlock] $ConditionScript, [int] $TimeoutSeconds = 60, [Object[]] $ScriptArgumentList) {
     $startTime = Get-Date
     $endTime = $startTime.AddSeconds($TimeoutSeconds)
     $ret = @{
@@ -133,11 +120,11 @@ function Wait-ForCondition([ScriptBlock] $ConditionScript, [int] $TimeoutSeconds
         value   = $null
     }
     try {
-        $job = Start-Job -ScriptBlock $ConditionScript
-        $Host.UI.RawUI.FlushInputBuffer()
+        $job = Start-Job -ScriptBlock $ConditionScript -ArgumentList $ScriptArgumentList
+        (Get-Host).UI.RawUI.FlushInputBuffer()
         while ($true) {
-            if ($Host.UI.rawui.KeyAvailable) {
-                $keyinfo = $Host.UI.rawui.ReadKey('IncludeKeyUp,NoEcho')
+            if ((Get-Host).UI.RawUI.KeyAvailable) {
+                $keyinfo = (Get-Host).UI.RawUI.ReadKey('IncludeKeyUp,NoEcho')
                 # ESC
                 if (27 -eq $keyinfo.Character) {
                     $ret.isError = $true
@@ -163,40 +150,41 @@ function Wait-ForCondition([ScriptBlock] $ConditionScript, [int] $TimeoutSeconds
     finally {
         Stop-Job $job.Id
         Remove-Job $job
-        $Host.UI.RawUI.FlushInputBuffer()
+        (Get-Host).UI.RawUI.FlushInputBuffer()
     }
     return $ret
 }
 
-function Wait-ServiceStopped([String] $serviceName, [int] $timeoutSeconds) {
-    $script = [ScriptBlock] {
-        while ($true) {
-            try {
-                (Get-Service $using:serviceName).WaitForStatus('Stopped', [TimeSpan]::New(0, 0, 0, 1))
-                break
-            }
-            catch [System.ServiceProcess.TimeoutException] {
-                # loop
-            }
+function Wait-ServiceStopped([String] $serviceName) {
+    while ($true) {
+        try {
+            (Get-Service $serviceName).WaitForStatus('Stopped', [TimeSpan]::New(0, 0, 0, 1))
+            break
         }
-        return $true
+        catch [System.ServiceProcess.TimeoutException] {
+            # loop
+        }
     }
-    return Wait-ForCondition $script $timeoutSeconds
+    return $true
+}
+
+function Exit-Process([int] $code) {
+    exit $code
 }
 
 function Install-Font([String] $dir) {
     $fontsDir = "$env:LOCALAPPDATA\Microsoft\Windows\Fonts"
     $regPath = "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
-    $installedFontFamilies = Get-InstalledFontFamilies
+    $installedFontFamilies = Invoke-Job ${function:Get-InstalledFontFamilies}
     New-Item $fontsDir -ItemType Directory -ErrorAction SilentlyContinue
     Get-ChildItem $dir -Recurse | Where-Object {
         $_.Extension -eq '.otf' -or $_.Extension -eq '.ttf' -or $_.Extension -eq '.ttc'
     } | ForEach-Object {
-        $fontFamilies = Get-FontFamilies $_
+        $fontFamilies = Invoke-Job ${function:Get-FontFamilies} $_.FullName
         $alreadyInstalledFontFamilies = Get-AlreadyInstalledFontFamilies $installedFontFamilies $fontFamilies
         if ($alreadyInstalledFontFamilies -gt 0) {
             error "Already exists font '$($alreadyInstalledFontFamilies | Select-Object -first 1)' in '$($_.FullName)'"
-            exit 1
+            Exit-Process 1
         }
     }
     Get-ChildItem $dir -Recurse | Where-Object {
@@ -206,7 +194,7 @@ function Install-Font([String] $dir) {
         Remove-Item $fontFile -ErrorAction SilentlyContinue
         if (Test-Path $fontFile) {
             error "Couldn't remove '$fontFile'; it may be in use."
-            exit 1
+            Exit-Process 1
         }
         Copy-Item $_.FullName -Destination $fontsDir
     }
@@ -231,11 +219,11 @@ function Uninstall-Font([String] $dir) {
         Remove-ItemProperty -Path $regPath -Name $fontName -ErrorAction SilentlyContinue
     }
     if ((Get-Service 'FontCache').Status -eq 'Running') {
-        info 'Stop FontCache service (stop the service manually as needed; ESC to cancel)'
+        info 'Stop FontCache service (stop the service manually as needed; ESC to cancel waiting and continue)'
         if (is_admin) {
             Stop-Service FontCache
         }
-        $ret = Wait-ServiceStopped 'FontCache' 60
+        $ret = Wait-ForCondition ${function:Wait-ServiceStopped} 60 'FontCache'
         if ($ret.isError) {
             warn "$($ret.result) and continue"
         }
@@ -247,7 +235,7 @@ function Uninstall-Font([String] $dir) {
         Remove-Item $fontFile -ErrorAction SilentlyContinue
         if (Test-Path $fontFile) {
             error "Couldn't remove '$fontFile'; it may be in use."
-            exit 1
+            Exit-Process 1
         }
     }
 }
