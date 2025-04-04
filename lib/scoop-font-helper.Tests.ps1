@@ -190,23 +190,24 @@ Describe 'Get-FontName' {
         }
     }
 
-    BeforeDiscovery {
-        $regPath = "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
-        $installedFonts = Get-Item -Path $regPath | Select-Object -ExpandProperty Property | ForEach-Object {
-            return @{
-                File     = (Get-ItemPropertyValue -Path $regPath -Name $_)
-                FontName = $_
+    Context 'comparing with the already installed fonts' -Tag 'Regression' {
+        BeforeDiscovery {
+            $regPath = "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
+            $installedFonts = Get-Item -Path $regPath | Select-Object -ExpandProperty Property | ForEach-Object {
+                return @{
+                    File     = (Get-ItemPropertyValue -Path $regPath -Name $_)
+                    FontName = $_
+                }
+            }
+            Write-Host "installedFonts.Count: $($installedFonts.Count)"
+        }
+
+        Context 'when <file>' -ForEach $installedFonts {
+            It "return '<fontName>'" {
+                $name = Get-FontName $file
+                $name | Should -Be $fontName
             }
         }
-        Write-Host "installedFonts.Count: $($installedFonts.Count)"
-    }
-
-    Context 'when <file>' -Tag 'Regression' -ForEach $installedFonts {
-        It "return '<fontName>'" {
-            $name = Get-FontName $file
-            $name | Should -Be $fontName
-        }
-
     }
 }
 
