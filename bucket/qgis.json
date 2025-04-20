@@ -1,12 +1,12 @@
 {
-    "version": "3.42.1-1",
+    "version": "3.42.2-1",
     "description": "QGIS is a user friendly Open Source Geographic Information System",
     "homepage": "https://qgis.org/",
     "license": "GPL-2.0-or-later",
     "notes": "For file associations, run 'reg import \"$dir\\apps\\qgis\\bin\\qgis.reg\"'",
-    "url": "https://download.qgis.org/downloads/QGIS-OSGeo4W-3.42.1-1.msi",
-    "hash": "cfe18242f2da3596714c883c0084cee04f6255655a17ff8d20c3bef85e52714b",
-    "extract_dir": "QGIS 3.42.1",
+    "url": "https://download.qgis.org/downloads/QGIS-OSGeo4W-3.42.2-1.msi",
+    "hash": "0f9077bca161fb2594f6f182b2c760b2d25dd3b2904e456ee6ed11cf0627dc44",
+    "extract_dir": "QGIS 3.42.2",
     "bin": "bin\\qgis-bin.exe",
     "shortcuts": [
         [
