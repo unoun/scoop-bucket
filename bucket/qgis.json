@@ -1,5 +1,5 @@
 {
-    "version": "4.2.0-1",
+    "version": "4.2.1-1",
     "description": "QGIS is a user friendly Open Source Geographic Information System",
     "homepage": "https://qgis.org/",
     "license": "GPL-2.0-or-later",
@@ -7,9 +7,9 @@
         "For file associations, run 'reg import \"$dir\\apps\\qgis\\bin\\qgis.reg\"'.",
         "OSGeo4W dllupdate is disabled because it requires UAC elevation for system-wide DLL updates."
     ],
-    "url": "https://download.qgis.org/downloads/QGIS-OSGeo4W-4.2.0-1.msi",
-    "hash": "f55cc74296008386b7b1405d4b165bca1ffa4a8d80ba3b140c6404116af41eb1",
-    "extract_dir": "QGIS 4.2.0",
+    "url": "https://download.qgis.org/downloads/QGIS-OSGeo4W-4.2.1-1.msi",
+    "hash": "cd7ba1af6e9ca83fe2bbcfeae636bed09fa2cf77acdf530663fd10197b19aba5",
+    "extract_dir": "QGIS 4.2.1",
     "bin": "bin\\qgis-bin.exe",
     "shortcuts": [
         [
@@ -23,7 +23,7 @@
             "if (Test-Path $dllupdate) {",
             "  info \"Disabling $dllupdate\"",
             "  Rename-Item $dllupdate 'dllupdate.exe.ORIG'",
-            "  @(\"@echo off\", \"echo Scoop: dllupdate disabled: %*\") | Set-Content \"$dir\\bin\\dllupdate.cmd\" -Encoding Ascii",
+            "  @(\"@echo Scoop: dllupdate disabled: %*\") | Set-Content \"$dir\\bin\\dllupdate.cmd\" -Encoding Ascii",
             "}",
             "Get-ChildItem \"$dir\\etc\" -Recurse -Filter \"*.bat\" | Select-String -Pattern \"^dllupdate\" -List | % {",
             "  info \"Updating $($_.Path)\"",
