@@ -1,5 +1,5 @@
 #Requires -Version 5
-#Requires -Modules @{ ModuleName='Pester'; ModuleVersion='5.7' }
+#Requires -Modules @{ ModuleName='Pester'; ModuleVersion='6.2' }
 
 BeforeAll {
     . $PSCommandPath.Replace('.Tests.ps1', '.ps1')
@@ -7,6 +7,7 @@ BeforeAll {
     function warn { Write-Host "called warn(): $args" }
     function error { Write-Host "called error(): $args" }
     function is_admin { $false }
+    function appdir { throw 'appdir should be mocked' }
 }
 
 Describe 'Get-FontFamilies' {
@@ -264,6 +265,176 @@ Describe 'Exit-Process' {
     }
 }
 
+Describe 'Confirm-Action' {
+    BeforeEach {
+        $script:character = $null
+        Mock Get-Host {
+            $RawUI = [PSCustomObject]@{
+                KeyAvailable = $true
+            }
+            $RawUI | Add-Member -Name FlushInputBuffer -Type ScriptMethod -Value {}
+            $RawUI | Add-Member -Name ReadKey -Type ScriptMethod -Value { return @{ Character = $script:character } }
+            return [PSCustomObject]@{
+                UI = [PSCustomObject]@{
+                    RawUI = $RawUI
+                }
+            }
+        }
+    }
+
+    Context 'when <char> is pressed' -ForEach @(
+        @{ dispChar = 'Y'  ; char = 'Y'; result = 'Y'; isError = $false }
+        @{ dispChar = 'y'  ; char = 'y'; result = 'Y'; isError = $false }
+        @{ dispChar = 'N'  ; char = 'N'; result = 'N'; isError = $true }
+        @{ dispChar = 'n'  ; char = 'n'; result = 'N'; isError = $true }
+        @{ dispChar = 'ESC'; char = 27 ; result = 'Cancelled'; isError = $true }
+    ) {
+        It 'return <result>' {
+            $script:character = $char
+            $ret = Confirm-Action
+            if ($isError) {
+                $ret.isError | Should-BeTrue
+            }
+            else {
+                $ret.isError | Should-BeFalse
+            }
+            $ret.result | Should-Be $result
+        }
+    }
+
+    Context 'when timeout with TimeoutIsError:<timeoutIsError>' -ForEach @(
+        @{ timeoutIsError = $true }
+        @{ timeoutIsError = $false }
+    ) {
+        It 'return Timeout with isError:<timeoutIsError>' {
+            $ret = Confirm-Action $timeoutIsError 1
+            if ($timeoutIsError) {
+                $ret.isError | Should-BeTrue
+            }
+            else {
+                $ret.isError | Should-BeFalse
+            }
+            $ret.result | Should-Be 'Timeout'
+        }
+    }
+}
+
+Describe 'Resolve-UninstallDirectory' {
+    BeforeAll {
+        Mock appdir { 'C:\app' }
+    }
+
+    It 'when specified directory exists, return it' {
+        Mock Test-Path { $true }
+
+        Resolve-UninstallDirectory 'C:\exists' $null $null | Should -Be 'C:\exists'
+
+        Should -Invoke Test-Path -Times 1 -Exactly
+        Should -Invoke appdir -Times 0 -Exactly
+    }
+
+    It 'when app is missing, return specified directory' {
+        Mock Test-Path { $false }
+
+        Resolve-UninstallDirectory 'C:\missing' $null '1.0' | Should -Be 'C:\missing'
+    }
+
+    It 'when old_version is missing, return specified directory' {
+        Mock Test-Path { $false }
+
+        Resolve-UninstallDirectory 'C:\missing' 'app' $null | Should -Be 'C:\missing'
+    }
+
+    It 'when no candidate is found, exit with error' {
+        Mock Test-Path { $false }
+        Mock Get-ChildItem { @() }
+        Mock Exit-Process { throw $code }
+        Mock error { Write-Host "called error(): $args" }
+
+        { Resolve-UninstallDirectory 'C:\missing' 'app' '1.0' } | Should -Throw 1
+        Should -Invoke error -Times 2 -Exactly
+    }
+
+    It 'when multiple candidate directories are found, exit with error' {
+        Mock Test-Path {
+            param($path)
+            return $path -like '*Fonts\*'
+        }
+        Mock Get-ChildItem {
+            @(
+                [PSCustomObject]@{
+                    Name          = 'font1.otf'
+                    Extension     = '.otf'
+                    DirectoryName = 'C:\app\1.0\dir1'
+                },
+                [PSCustomObject]@{
+                    Name          = 'font2.ttf'
+                    Extension     = '.ttf'
+                    DirectoryName = 'C:\app\1.0\dir2'
+                }
+            )
+        }
+        Mock Exit-Process { throw $code }
+        Mock error { Write-Host "called error(): $args" }
+
+        { Resolve-UninstallDirectory 'C:\missing' 'app' '1.0' } | Should -Throw 1
+        Should -Invoke error -Times 4 -Exactly
+    }
+
+    It 'when one candidate is found and action is confirmed, return candidate' {
+        Mock Test-Path {
+            param($path)
+            return $path -like '*Fonts\*'
+        }
+        Mock Get-ChildItem {
+            @(
+                [PSCustomObject]@{
+                    Name          = 'font3.ttf'
+                    Extension     = '.ttf'
+                    DirectoryName = 'C:\app\1.0\dir3'
+                },
+                [PSCustomObject]@{
+                    Name          = 'font4.ttf'
+                    Extension     = '.ttf'
+                    DirectoryName = 'C:\app\1.0\dir3'
+                }
+            )
+        }
+        Mock Confirm-Action {
+            return @{
+                isError = $false
+            }
+        }
+        Resolve-UninstallDirectory 'C:\missing' 'app' '1.0' | Should -Be 'C:\app\1.0\dir3'
+    }
+
+    It 'when one candidate is found and action is cancelled, exit with error' {
+        Mock Test-Path {
+            param($path)
+            return $path -like '*Fonts\*'
+        }
+        Mock Get-ChildItem {
+            @(
+                [PSCustomObject]@{
+                    Name          = 'font4.ttc'
+                    Extension     = '.ttc'
+                    DirectoryName = 'C:\app\1.0\dir4'
+                }
+            )
+        }
+        Mock Confirm-Action {
+            return @{
+                isError = $true
+            }
+        }
+        Mock Exit-Process { throw $code }
+        Mock error { Write-Host "called error(): $args" }
+
+        { Resolve-UninstallDirectory 'C:\missing' 'app' '1.0' } | Should -Throw 1
+        Should -Invoke error -Times 0 -Exactly
+    }
+}
+
 Describe 'Install-Font' {
     BeforeAll {
         Mock New-Item { Write-Host "called New-Item: $($args[5])" }
@@ -347,7 +518,7 @@ Describe 'Uninstall-Font' {
                     { Uninstall-Font 'dummy' } | Should -Throw 1
                     Should -Invoke -CommandName Remove-ItemProperty -Times 1 -Exactly
                     Should -Invoke -CommandName Remove-Item -Times 1 -Exactly
-                    Should -Invoke -CommandName Test-Path -Times 1 -Exactly
+                    Should -Invoke -CommandName Test-Path -Times 2 -Exactly
                 }
             }
 

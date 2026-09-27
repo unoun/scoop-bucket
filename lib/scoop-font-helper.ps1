@@ -172,6 +172,92 @@ function Exit-Process([int] $code) {
     exit $code
 }
 
+function Confirm-Action([bool] $TimeoutIsError = $true, [int] $TimeoutSeconds = 60) {
+    $startTime = Get-Date
+    $endTime = $startTime.AddSeconds($TimeoutSeconds)
+    $ret = @{
+        isError = $true
+        result  = 'Error'
+    }
+    try {
+        (Get-Host).UI.RawUI.FlushInputBuffer()
+        while ($true) {
+            if ((Get-Host).UI.RawUI.KeyAvailable) {
+                $keyinfo = (Get-Host).UI.RawUI.ReadKey('IncludeKeyUp,NoEcho')
+                if ('y' -ieq $keyInfo.Character) {
+                    $ret.isError = $false
+                    $ret.result = 'Y'
+                    break
+                }
+                if ('n' -ieq $keyInfo.Character) {
+                    $ret.isError = $true
+                    $ret.result = 'N'
+                    break
+                }
+                # ESC
+                if (27 -eq $keyinfo.Character) {
+                    $ret.isError = $true
+                    $ret.result = 'Cancelled'
+                    break
+                }
+            }
+            if ((Get-Date) -ge $endTime) {
+                $ret.isError = $TimeoutIsError
+                $ret.result = 'Timeout'
+                break
+            }
+            Start-Sleep -Milliseconds 500
+        }
+    }
+    finally {
+        (Get-Host).UI.RawUI.FlushInputBuffer()
+    }
+    return $ret
+}
+
+function Resolve-UninstallDirectory([String] $dir, [String] $app = $null, [String] $old_version = $null) {
+    $fontsDir = "$env:LOCALAPPDATA\Microsoft\Windows\Fonts"
+    if ((Test-Path $dir) -or [String]::IsNullOrEmpty($app) -or [String]::IsNullOrEmpty($old_version)) {
+        return $dir
+    }
+    $appRoot = "$(appdir $app)\$old_version"
+    $candidates = @(
+        Get-ChildItem $appRoot -Recurse | Where-Object {
+            $_.Extension -eq '.otf' -or $_.Extension -eq '.ttf' -or $_.Extension -eq '.ttc'
+        } | ForEach-Object {
+            $fontFile = "$fontsDir\$($_.Name)"
+            if (Test-Path $fontFile) {
+                $_.DirectoryName
+            }
+        } | Sort-Object -Unique
+    )
+    if ($candidates.Count -ne 1) {
+        error "Couldn't resolve the uninstall directory."
+        if ($candidates.Count -eq 0) {
+            error "Specified: '$dir'"
+        }
+        else {
+            error "Multiple directories were found:"
+            $candidates | ForEach-Object { error "  $_" }
+        }
+        Exit-Process 1
+    }
+    $resolvedDir = $candidates[0]
+
+    warn "The specified uninstall directory does not exist:"
+    warn "  $dir"
+    warn "A different directory was found:"
+    warn "  $resolvedDir"
+
+    info 'Continue uninstalling from this directory? [y/N]'
+    $ret = Confirm-Action
+    if ($ret.isError) {
+        info 'Uninstall cancelled.'
+        Exit-Process 1
+    }
+    return $resolvedDir
+}
+
 function Install-Font([String] $dir) {
     $fontsDir = "$env:LOCALAPPDATA\Microsoft\Windows\Fonts"
     $regPath = "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
@@ -209,6 +295,8 @@ function Install-Font([String] $dir) {
 }
 
 function Uninstall-Font([String] $dir) {
+    $dir = Resolve-UninstallDirectory $dir $app $old_version
+
     $fontsDir = "$env:LOCALAPPDATA\Microsoft\Windows\Fonts"
     $regPath = "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
     Get-ChildItem $dir -Recurse | Where-Object {
