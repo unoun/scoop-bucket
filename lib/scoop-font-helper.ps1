@@ -6,28 +6,28 @@ function Invoke-Job([ScriptBlock] $JobScript, [Object[]] $ScriptArgumentList) {
     return $ret
 }
 
-function Get-FontFamilies ([String] $fullName) {
+function Get-FontFamily ([String] $FullName) {
     Add-Type -AssemblyName System.Drawing
     $col = [System.Drawing.Text.PrivateFontCollection]::new()
-    $col.AddFontFile($fullName)
+    $col.AddFontFile($FullName)
     $list = $col.Families.Name
     $col.Dispose()
     return $list
 }
 
-function Get-InstalledFontFamilies() {
+function Get-InstalledFontFamily() {
     Add-Type -AssemblyName System.Drawing
     return [System.Drawing.FontFamily]::Families.Name
 }
 
-function Get-AlreadyInstalledFontFamilies([String[]] $installed, [String[]] $list) {
-    return $list | Where-Object { $installed -contains $_ }
+function Get-AlreadyInstalledFontFamily([String[]] $Installed, [String[]] $List) {
+    return $List | Where-Object { $Installed -contains $_ }
 }
 
-function Get-FontInfo([String] $fullName, [int] $index) {
+function Get-FontInfo([String] $FullName, [int] $Index) {
     Add-Type -AssemblyName PresentationCore
-    $uri = [UriBuilder]::new($fullName)
-    $uri.Fragment = [String]$index
+    $uri = [UriBuilder]::new($FullName)
+    $uri.Fragment = [String]$Index
     $font = [Windows.Media.GlyphTypeface]::new($uri.Uri)
     return @{
         'FamilyName'      = $font.FamilyNames['en-US']
@@ -37,9 +37,9 @@ function Get-FontInfo([String] $fullName, [int] $index) {
     }
 }
 
-function Get-NumberOfFonts([System.IO.FileInfo] $file) {
+function Get-FontCount([System.IO.FileInfo] $File) {
     try {
-        $fr = [System.IO.File]::Open($file.FullName,
+        $fr = [System.IO.File]::Open($File.FullName,
             [System.IO.FileMode]::Open,
             [System.IO.FileAccess]::Read,
             [System.IO.FileShare]::ReadWrite + [System.IO.FileShare]::Delete)
@@ -64,22 +64,22 @@ function Get-NumberOfFonts([System.IO.FileInfo] $file) {
     return $ret
 }
 
-function Get-OTFName([System.IO.FileInfo] $file) {
-    $fontInfo = Invoke-Job ${function:Get-FontInfo} $file.FullName
+function Get-OTFName([System.IO.FileInfo] $File) {
+    $fontInfo = Invoke-Job ${function:Get-FontInfo} $File.FullName
     return "$($fontInfo.Win32FamilyName) $($fontInfo.Win32FaceName) (OpenType)"
 }
 
-function Get-TTFName([System.IO.FileInfo] $file) {
-    $fontInfo = Invoke-Job ${function:Get-FontInfo} $file.FullName
+function Get-TTFName([System.IO.FileInfo] $File) {
+    $fontInfo = Invoke-Job ${function:Get-FontInfo} $File.FullName
     return "$($fontInfo.Win32FamilyName) $($fontInfo.Win32FaceName) (TrueType)"
 }
 
-function Get-TTCName([System.IO.FileInfo] $file) {
-    $numFonts = Get-NumberOfFonts $file
+function Get-TTCName([System.IO.FileInfo] $File) {
+    $numFonts = Get-FontCount $File
     $i = 0
     $fontList = @()
     while ($i -lt $numFonts) {
-        $fontInfo = Invoke-Job ${function:Get-FontInfo} $file.FullName, $i
+        $fontInfo = Invoke-Job ${function:Get-FontInfo} $File.FullName, $i
         if ("$($fontInfo.FamilyName) $($fontInfo.FaceName)" -eq $fontInfo.Win32FamilyName) {
             $fontList += $fontInfo.Win32FamilyName
         }
@@ -98,15 +98,15 @@ function Get-TTCName([System.IO.FileInfo] $file) {
     return $fontName
 }
 
-function Get-FontName([System.IO.FileInfo] $file) {
-    if ($file.Extension -eq '.otf') {
-        $fontName = Get-OTFName $file
+function Get-FontName([System.IO.FileInfo] $File) {
+    if ($File.Extension -eq '.otf') {
+        $fontName = Get-OTFName $File
     }
-    elseif ($file.Extension -eq '.ttf') {
-        $fontName = Get-TTFName $file
+    elseif ($File.Extension -eq '.ttf') {
+        $fontName = Get-TTFName $File
     }
-    elseif ($file.Extension -eq '.ttc') {
-        $fontName = Get-TTCName $file
+    elseif ($File.Extension -eq '.ttc') {
+        $fontName = Get-TTCName $File
     }
     return $fontName
 }
@@ -155,21 +155,25 @@ function Wait-ForCondition([ScriptBlock] $ConditionScript, [int] $TimeoutSeconds
     return $ret
 }
 
-function Wait-ServiceStopped([String] $serviceName) {
+function Wait-ServiceStatus([String] $ServiceName, [System.ServiceProcess.ServiceControllerStatus] $DesiredStatus, [TimeSpan] $Timeout) {
+    (Get-Service $ServiceName).WaitForStatus($DesiredStatus, $Timeout)
+}
+
+function Wait-ServiceStopped([String] $ServiceName) {
     while ($true) {
         try {
-            (Get-Service $serviceName).WaitForStatus('Stopped', [TimeSpan]::New(0, 0, 0, 1))
+            Wait-ServiceStatus -ServiceName $ServiceName -DesiredStatus 'Stopped' -Timeout ([TimeSpan]::New(0, 0, 0, 1))
             break
         }
         catch [System.ServiceProcess.TimeoutException] {
-            # loop
+            continue
         }
     }
     return $true
 }
 
-function Exit-Process([int] $code) {
-    exit $code
+function Exit-Process([int] $Code) {
+    exit $Code
 }
 
 function Confirm-Action([bool] $TimeoutIsError = $true, [int] $TimeoutSeconds = 60) {
@@ -215,12 +219,12 @@ function Confirm-Action([bool] $TimeoutIsError = $true, [int] $TimeoutSeconds = 
     return $ret
 }
 
-function Resolve-UninstallDirectory([String] $dir, [String] $app = $null, [String] $old_version = $null) {
+function Resolve-UninstallDirectory([String] $Dir, [String] $App = $null, [String] $OldVersion = $null) {
     $fontsDir = "$env:LOCALAPPDATA\Microsoft\Windows\Fonts"
-    if ((Test-Path $dir) -or [String]::IsNullOrEmpty($app) -or [String]::IsNullOrEmpty($old_version)) {
-        return $dir
+    if ((Test-Path $Dir) -or [String]::IsNullOrEmpty($App) -or [String]::IsNullOrEmpty($OldVersion)) {
+        return $Dir
     }
-    $appRoot = "$(appdir $app)\$old_version"
+    $appRoot = "$(appdir $App)\$OldVersion"
     $candidates = @(
         Get-ChildItem $appRoot -Recurse | Where-Object {
             $_.Extension -eq '.otf' -or $_.Extension -eq '.ttf' -or $_.Extension -eq '.ttc'
@@ -234,7 +238,7 @@ function Resolve-UninstallDirectory([String] $dir, [String] $app = $null, [Strin
     if ($candidates.Count -ne 1) {
         error "Couldn't resolve the uninstall directory."
         if ($candidates.Count -eq 0) {
-            error "Specified: '$dir'"
+            error "Specified: '$Dir'"
         }
         else {
             error "Multiple directories were found:"
@@ -245,7 +249,7 @@ function Resolve-UninstallDirectory([String] $dir, [String] $app = $null, [Strin
     $resolvedDir = $candidates[0]
 
     warn "The specified uninstall directory does not exist:"
-    warn "  $dir"
+    warn "  $Dir"
     warn "A different directory was found:"
     warn "  $resolvedDir"
 
@@ -258,22 +262,22 @@ function Resolve-UninstallDirectory([String] $dir, [String] $app = $null, [Strin
     return $resolvedDir
 }
 
-function Install-Font([String] $dir) {
+function Install-Font([String] $Dir) {
     $fontsDir = "$env:LOCALAPPDATA\Microsoft\Windows\Fonts"
     $regPath = "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
-    $installedFontFamilies = Invoke-Job ${function:Get-InstalledFontFamilies}
+    $installedFontFamilies = Invoke-Job ${function:Get-InstalledFontFamily}
     New-Item $fontsDir -ItemType Directory -ErrorAction SilentlyContinue
-    Get-ChildItem $dir -Recurse | Where-Object {
+    Get-ChildItem $Dir -Recurse | Where-Object {
         $_.Extension -eq '.otf' -or $_.Extension -eq '.ttf' -or $_.Extension -eq '.ttc'
     } | ForEach-Object {
-        $fontFamilies = Invoke-Job ${function:Get-FontFamilies} $_.FullName
-        $alreadyInstalledFontFamilies = Get-AlreadyInstalledFontFamilies $installedFontFamilies $fontFamilies
+        $fontFamilies = Invoke-Job ${function:Get-FontFamily} $_.FullName
+        $alreadyInstalledFontFamilies = Get-AlreadyInstalledFontFamily $installedFontFamilies $fontFamilies
         if ($alreadyInstalledFontFamilies -gt 0) {
             error "Already exists font '$($alreadyInstalledFontFamilies | Select-Object -first 1)' in '$($_.FullName)'"
             Exit-Process 1
         }
     }
-    Get-ChildItem $dir -Recurse | Where-Object {
+    Get-ChildItem $Dir -Recurse | Where-Object {
         $_.Extension -eq '.otf' -or $_.Extension -eq '.ttf' -or $_.Extension -eq '.ttc'
     } | ForEach-Object {
         $fontFile = "$fontsDir\$($_.Name)"
@@ -284,7 +288,7 @@ function Install-Font([String] $dir) {
         }
         Copy-Item $_.FullName -Destination $fontsDir
     }
-    Get-ChildItem $dir -Recurse | Where-Object {
+    Get-ChildItem $Dir -Recurse | Where-Object {
         $_.Extension -eq '.otf' -or $_.Extension -eq '.ttf' -or $_.Extension -eq '.ttc'
     } | ForEach-Object {
         $fontName = Get-FontName $_
@@ -294,12 +298,12 @@ function Install-Font([String] $dir) {
     }
 }
 
-function Uninstall-Font([String] $dir) {
-    $dir = Resolve-UninstallDirectory $dir $app $old_version
+function Uninstall-Font([String] $Dir) {
+    $Dir = Resolve-UninstallDirectory -Dir $Dir -App $app -OldVersion $old_version
 
     $fontsDir = "$env:LOCALAPPDATA\Microsoft\Windows\Fonts"
     $regPath = "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
-    Get-ChildItem $dir -Recurse | Where-Object {
+    Get-ChildItem $Dir -Recurse | Where-Object {
         $_.Extension -eq '.otf' -or $_.Extension -eq '.ttf' -or $_.Extension -eq '.ttc'
     } | ForEach-Object {
         $fontName = Get-FontName $_
@@ -311,12 +315,12 @@ function Uninstall-Font([String] $dir) {
         if (is_admin) {
             Stop-Service FontCache
         }
-        $ret = Wait-ForCondition ${function:Wait-ServiceStopped} 60 'FontCache'
+        $ret = Wait-ForCondition -ConditionScript ${function:Wait-ServiceStopped} -TimeoutSeconds 60 -ScriptArgumentList 'FontCache'
         if ($ret.isError) {
             warn "$($ret.result) and continue"
         }
     }
-    Get-ChildItem $dir -Recurse | Where-Object {
+    Get-ChildItem $Dir -Recurse | Where-Object {
         $_.Extension -eq '.otf' -or $_.Extension -eq '.ttf' -or $_.Extension -eq '.ttc'
     } | ForEach-Object {
         $fontFile = "$fontsDir\$($_.Name)"

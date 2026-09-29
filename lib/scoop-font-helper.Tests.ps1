@@ -1,6 +1,13 @@
 #Requires -Version 5
 #Requires -Modules @{ ModuleName='Pester'; ModuleVersion='6.2' }
 
+[Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+    'PSAvoidUsingWriteHost',
+    '',
+    Justification = 'Write-Host is used for test diagnostics.'
+)]
+param()
+
 BeforeAll {
     . $PSCommandPath.Replace('.Tests.ps1', '.ps1')
     function info { Write-Host "called info(): $args" }
@@ -10,58 +17,58 @@ BeforeAll {
     function appdir { throw 'appdir should be mocked' }
 }
 
-Describe 'Get-FontFamilies' {
+Describe 'Get-FontFamily' {
     Context 'when <file>' -ForEach @(
         @{ File = "$env:SystemRoot\Fonts\msgothic.ttc"; TypeName = 'Object[]'; NumOfFonts = 3; FontName = 'MS UI Gothic' }
         @{ File = "$env:SystemRoot\Fonts\tahoma.ttf"; TypeName = 'String'; NumOfFonts = 1; FontName = 'Tahoma' }
     ) {
         It 'typeName:<typeName>' {
-            (Get-FontFamilies $file).GetType().Name | Should -Be $typeName
-            Get-FontFamilies $file | Should -BeOfType [String]
+            (Get-FontFamily $file).GetType().Name | Should -Be $typeName
+            Get-FontFamily $file | Should -BeOfType [String]
         }
 
         It 'numOfFonts:<numOfFonts>' {
-            Get-FontFamilies $file | Should -HaveCount $numOfFonts
+            Get-FontFamily $file | Should -HaveCount $numOfFonts
         }
 
         It 'contains fontName:<fontName>' {
-            $ret = Get-FontFamilies $file
+            $ret = Get-FontFamily $file
             $ret | Should -Contain $fontName
         }
     }
 }
 
-Describe 'Get-InstalledFontFamilies' {
+Describe 'Get-InstalledFontFamily' {
     It 'then contains fontName:<fontName>' -ForEach @(
         @{ FontName = 'Tahoma' }
         @{ FontName = 'Times New Roman' }
     ) {
-        Get-InstalledFontFamilies | Should -Contain $fontName
+        Get-InstalledFontFamily | Should -Contain $fontName
     }
 }
 
-Describe 'Get-AlreadyInstalledFontFamilies' {
+Describe 'Get-AlreadyInstalledFontFamily' {
     It 'when $installed does not contains any items from $list, return null' {
         $installed = ('i1', 'i2', 'i3', 'i4', 'i5')
-        Get-AlreadyInstalledFontFamilies $installed 'i9' | Should -BeNullOrEmpty
-        Get-AlreadyInstalledFontFamilies $installed ('i8', 'i9') | Should -BeNullOrEmpty
-        Get-AlreadyInstalledFontFamilies $installed 'i9' | Should -Not -BeGreaterThan 0
+        Get-AlreadyInstalledFontFamily $installed 'i9' | Should -BeNullOrEmpty
+        Get-AlreadyInstalledFontFamily $installed ('i8', 'i9') | Should -BeNullOrEmpty
+        Get-AlreadyInstalledFontFamily $installed 'i9' | Should -Not -BeGreaterThan 0
     }
 
     It 'when $installed contains a single item from $list, return a single value' {
         $installed = ('i1', 'i2', 'i3', 'i4', 'i5')
-        Get-AlreadyInstalledFontFamilies $installed 'i1' | Should -Be 'i1'
-        Get-AlreadyInstalledFontFamilies $installed ('i5', 'i9') | Should -Be 'i5'
-        Get-AlreadyInstalledFontFamilies $installed 'i1' | Should -BeGreaterThan 0
-        Get-AlreadyInstalledFontFamilies $installed ('i5', 'i9') | Should -BeGreaterThan 0
+        Get-AlreadyInstalledFontFamily $installed 'i1' | Should -Be 'i1'
+        Get-AlreadyInstalledFontFamily $installed ('i5', 'i9') | Should -Be 'i5'
+        Get-AlreadyInstalledFontFamily $installed 'i1' | Should -BeGreaterThan 0
+        Get-AlreadyInstalledFontFamily $installed ('i5', 'i9') | Should -BeGreaterThan 0
     }
 
     It 'when $installed contains multiple items from $list, return multiple values' {
         $installed = ('i1', 'i2', 'i3', 'i4', 'i5')
-        Get-AlreadyInstalledFontFamilies $installed ('i1', 'i2') | Should -Be ('i1', 'i2')
-        Get-AlreadyInstalledFontFamilies $installed ('i3', 'i4', 'i9') | Should -Be ('i3', 'i4')
-        Get-AlreadyInstalledFontFamilies $installed ('i1', 'i2') | Should -BeGreaterThan 0
-        Get-AlreadyInstalledFontFamilies $installed ('i3', 'i4', 'i9') | Should -BeGreaterThan 0
+        Get-AlreadyInstalledFontFamily $installed ('i1', 'i2') | Should -Be ('i1', 'i2')
+        Get-AlreadyInstalledFontFamily $installed ('i3', 'i4', 'i9') | Should -Be ('i3', 'i4')
+        Get-AlreadyInstalledFontFamily $installed ('i1', 'i2') | Should -BeGreaterThan 0
+        Get-AlreadyInstalledFontFamily $installed ('i3', 'i4', 'i9') | Should -BeGreaterThan 0
     }
 }
 
@@ -102,12 +109,12 @@ Describe 'Get-FontInfo' {
     }
 }
 
-Describe 'Get-NumberOfFonts' {
+Describe 'Get-FontCount' {
     Context 'when <file>' -ForEach @(
         @{ File = "$env:SystemRoot\Fonts\msgothic.ttc"; NumOfFonts = 3 }
     ) {
         It 'then return <numOfFonts>' {
-            Get-NumberOfFonts $file | Should -Be $numOfFonts
+            Get-FontCount $file | Should -Be $numOfFonts
         }
     }
 }
@@ -143,7 +150,7 @@ Describe 'Get-TTCName' {
 
     Context 'when FamilyName + FaceName == Win32FamilyName' {
         It 'return Win32FamilyName based name' {
-            Mock Get-NumberOfFonts { return 1 }
+            Mock Get-FontCount { return 1 }
             Mock Invoke-Job {
                 return @{
                     FamilyName      = 'Dummy'
@@ -157,7 +164,7 @@ Describe 'Get-TTCName' {
 
     Context 'when the length of the joined name string exceeds 255' {
         It 'then stop joining and return the joined name' {
-            Mock Get-NumberOfFonts { return 255 }
+            Mock Get-FontCount { return 255 }
             Mock Invoke-Job {
                 return @{
                     FamilyName      = 'Dummy'
@@ -247,6 +254,18 @@ Describe 'Wait-ForCondition' {
     }
 }
 
+Describe 'Wait-ServiceStatus' {
+    It 'WaitForStatus' {
+        Mock Get-Service {
+            $service = [PSCustomObject]@{}
+            $service | Add-Member -Name WaitForStatus -Type ScriptMethod -Value {}
+            return $service
+        }
+        Wait-ServiceStatus 'FontCache' 'Stopped' ([TimeSpan]::New(0, 0, 0, 1))
+        Should -Invoke -CommandName Get-Service -Times 1 -Exactly -ParameterFilter { $ServiceName -eq 'FontCache' }
+    }
+}
+
 Describe 'Wait-ServiceStopped' {
     It 'when stopped, return true' {
         Mock Get-Service {
@@ -255,7 +274,20 @@ Describe 'Wait-ServiceStopped' {
             return $service
         }
         Wait-ServiceStopped 'FontCache' | Should -BeTrue
-        Should -Invoke -CommandName Get-Service -Times 1 -Exactly -ParameterFilter { $serviceName -eq 'FontCache' }
+        Should -Invoke -CommandName Get-Service -Times 1 -Exactly -ParameterFilter { $ServiceName -eq 'FontCache' }
+    }
+
+    It 'when initially timed out then stopped, return true' {
+        $script:callCount = 0
+
+        Mock Wait-ServiceStatus {
+            $script:callCount++
+            if ($script:callCount -eq 1) {
+                throw [System.ServiceProcess.TimeoutException]::new('timeout')
+            }
+        }
+        Wait-ServiceStopped 'FontCache' | Should -BeTrue
+        Should -Invoke -CommandName Wait-ServiceStatus -Times 2 -Exactly -ParameterFilter { $ServiceName -eq 'FontCache' }
     }
 }
 
@@ -462,7 +494,7 @@ Describe 'Install-Font' {
 
         Context 'and not installed' {
             BeforeAll {
-                Mock Get-AlreadyInstalledFontFamilies { return @('') }
+                Mock Get-AlreadyInstalledFontFamily { return @('') }
                 Mock Remove-Item { Write-Host "called Remove-Item: $($args[3])" }
             }
 
