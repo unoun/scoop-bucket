@@ -23,17 +23,17 @@ Describe 'Get-FontFamily' {
         @{ File = "$env:SystemRoot\Fonts\tahoma.ttf"; TypeName = 'String'; NumOfFonts = 1; FontName = 'Tahoma' }
     ) {
         It 'typeName:<typeName>' {
-            (Get-FontFamily $file).GetType().Name | Should -Be $typeName
-            Get-FontFamily $file | Should -BeOfType [String]
+            Get-FontFamily $file | Should-HaveType $typeName
+            Get-FontFamily $file | Should-All { $_ | Should-HaveType ([String]) }
         }
 
         It 'numOfFonts:<numOfFonts>' {
-            Get-FontFamily $file | Should -HaveCount $numOfFonts
+            Get-FontFamily $file | Should-BeCollection -Count $numOfFonts
         }
 
         It 'contains fontName:<fontName>' {
             $ret = Get-FontFamily $file
-            $ret | Should -Contain $fontName
+            $ret | Should-ContainCollection $fontName
         }
     }
 }
@@ -43,32 +43,32 @@ Describe 'Get-InstalledFontFamily' {
         @{ FontName = 'Tahoma' }
         @{ FontName = 'Times New Roman' }
     ) {
-        Get-InstalledFontFamily | Should -Contain $fontName
+        Get-InstalledFontFamily | Should-ContainCollection $fontName
     }
 }
 
 Describe 'Get-AlreadyInstalledFontFamily' {
     It 'when $installed does not contains any items from $list, return null' {
         $installed = ('i1', 'i2', 'i3', 'i4', 'i5')
-        Get-AlreadyInstalledFontFamily $installed 'i9' | Should -BeNullOrEmpty
-        Get-AlreadyInstalledFontFamily $installed ('i8', 'i9') | Should -BeNullOrEmpty
-        Get-AlreadyInstalledFontFamily $installed 'i9' | Should -Not -BeGreaterThan 0
+        Get-AlreadyInstalledFontFamily $installed 'i9' | Should-BeNull
+        Get-AlreadyInstalledFontFamily $installed ('i8', 'i9') | Should-BeNull
+        @(Get-AlreadyInstalledFontFamily $installed 'i9').Count | Should-BeLessThanOrEqual 0
     }
 
     It 'when $installed contains a single item from $list, return a single value' {
         $installed = ('i1', 'i2', 'i3', 'i4', 'i5')
-        Get-AlreadyInstalledFontFamily $installed 'i1' | Should -Be 'i1'
-        Get-AlreadyInstalledFontFamily $installed ('i5', 'i9') | Should -Be 'i5'
-        Get-AlreadyInstalledFontFamily $installed 'i1' | Should -BeGreaterThan 0
-        Get-AlreadyInstalledFontFamily $installed ('i5', 'i9') | Should -BeGreaterThan 0
+        Get-AlreadyInstalledFontFamily $installed 'i1' | Should-Be 'i1'
+        Get-AlreadyInstalledFontFamily $installed ('i5', 'i9') | Should-Be 'i5'
+        @(Get-AlreadyInstalledFontFamily $installed 'i1').Count | Should-BeGreaterThan 0
+        @(Get-AlreadyInstalledFontFamily $installed ('i5', 'i9')).Count | Should-BeGreaterThan 0
     }
 
     It 'when $installed contains multiple items from $list, return multiple values' {
         $installed = ('i1', 'i2', 'i3', 'i4', 'i5')
-        Get-AlreadyInstalledFontFamily $installed ('i1', 'i2') | Should -Be ('i1', 'i2')
-        Get-AlreadyInstalledFontFamily $installed ('i3', 'i4', 'i9') | Should -Be ('i3', 'i4')
-        Get-AlreadyInstalledFontFamily $installed ('i1', 'i2') | Should -BeGreaterThan 0
-        Get-AlreadyInstalledFontFamily $installed ('i3', 'i4', 'i9') | Should -BeGreaterThan 0
+        Get-AlreadyInstalledFontFamily $installed ('i1', 'i2') | Should-BeCollection ('i1', 'i2')
+        Get-AlreadyInstalledFontFamily $installed ('i3', 'i4', 'i9') | Should-BeCollection ('i3', 'i4')
+        @(Get-AlreadyInstalledFontFamily $installed ('i1', 'i2')).Count | Should-BeGreaterThan 0
+        @(Get-AlreadyInstalledFontFamily $installed ('i3', 'i4', 'i9')).Count | Should-BeGreaterThan 0
     }
 }
 
@@ -78,13 +78,13 @@ Describe 'Get-FontInfo' {
         @{ File = "$env:SystemRoot\Fonts\msgothic.ttc"; FamilyName = 'MS Gothic'; FaceName = 'Regular' }
     ) {
         It 'familyName:<familyName>' {
-            (Get-FontInfo $file).FamilyName | Should -Be $familyName
-            (Get-FontInfo $file).Win32FamilyName | Should -Be $familyName
+            (Get-FontInfo $file).FamilyName | Should-Be $familyName
+            (Get-FontInfo $file).Win32FamilyName | Should-Be $familyName
         }
 
         It 'faceName:<faceName>' {
-            (Get-FontInfo $file).FaceName | Should -Be $faceName
-            (Get-FontInfo $file).Win32FaceName | Should -Be $faceName
+            (Get-FontInfo $file).FaceName | Should-Be $faceName
+            (Get-FontInfo $file).Win32FaceName | Should-Be $faceName
         }
     }
 
@@ -97,13 +97,13 @@ Describe 'Get-FontInfo' {
             @{ Index = 2; FamilyName = 'MS PGothic'; FaceName = 'Regular' }
         ) {
             It 'familyName:<familyName>' {
-                (Get-FontInfo $file $index).FamilyName | Should -Be $familyName
-                (Get-FontInfo $file $index).Win32FamilyName | Should -Be $familyName
+                (Get-FontInfo $file $index).FamilyName | Should-Be $familyName
+                (Get-FontInfo $file $index).Win32FamilyName | Should-Be $familyName
             }
 
             It 'faceName:<faceName>' {
-                (Get-FontInfo $file $index).FaceName | Should -Be $faceName
-                (Get-FontInfo $file $index).Win32FaceName | Should -Be $faceName
+                (Get-FontInfo $file $index).FaceName | Should-Be $faceName
+                (Get-FontInfo $file $index).Win32FaceName | Should-Be $faceName
             }
         }
     }
@@ -114,7 +114,7 @@ Describe 'Get-FontCount' {
         @{ File = "$env:SystemRoot\Fonts\msgothic.ttc"; NumOfFonts = 3 }
     ) {
         It 'then return <numOfFonts>' {
-            Get-FontCount $file | Should -Be $numOfFonts
+            Get-FontCount $file | Should-Be $numOfFonts
         }
     }
 }
@@ -124,7 +124,7 @@ Describe 'Get-OTFName' {
         @{ File = "$env:SystemRoot\Fonts\msgothic.ttc"; fontName = 'MS Gothic Regular (OpenType)' }
     ) {
         It "return '<fontName>'" {
-            Get-OTFName $file | Should -Be $fontName
+            Get-OTFName $file | Should-Be $fontName
         }
     }
 }
@@ -134,7 +134,7 @@ Describe 'Get-TTFName' {
         @{ File = "$env:SystemRoot\Fonts\tahoma.ttf"; fontName = 'Tahoma Regular (TrueType)' }
     ) {
         It "return '<fontName>'" {
-            Get-TTFName $file | Should -Be $fontName
+            Get-TTFName $file | Should-Be $fontName
         }
     }
 }
@@ -144,7 +144,7 @@ Describe 'Get-TTCName' {
         @{ File = "$env:SystemRoot\Fonts\msgothic.ttc"; fontName = 'MS Gothic Regular & MS UI Gothic Regular & MS PGothic Regular (TrueType)' }
     ) {
         It "return '<fontName>'" {
-            Get-TTCName $file | Should -Be $fontName
+            Get-TTCName $file | Should-Be $fontName
         }
     }
 
@@ -158,7 +158,7 @@ Describe 'Get-TTCName' {
                     Win32FamilyName = 'Dummy Regular'
                 }
             }
-            Get-TTCName 'dummy' | Should -Be 'Dummy Regular (TrueType)'
+            Get-TTCName 'dummy' | Should-Be 'Dummy Regular (TrueType)'
         }
     }
 
@@ -175,7 +175,7 @@ Describe 'Get-TTCName' {
             }
             $fontName = 'Dummy Regular & Dummy Regular & Dummy Regular & Dummy Regular & Dummy Regular & Dummy Regular & Dummy Regular & Dummy Regular & Dummy Regular & Dummy Regular & Dummy Regular & Dummy Regular & Dummy Regular & Dummy Regular & Dummy Regular & Dummy Regular & Dummy Regular'
             info "Expected fontName length: $($fontName.Length)"
-            Get-TTCName 'dummy' | Should -Be $fontName
+            Get-TTCName 'dummy' | Should-Be $fontName
         }
     }
 }
@@ -186,7 +186,7 @@ Describe 'Get-FontName' {
         @{ File = "$env:SystemRoot\Fonts\msgothic.ttc"; fontName = 'MS Gothic Regular & MS UI Gothic Regular & MS PGothic Regular (TrueType)' }
     ) {
         It "return '<fontName>'" {
-            Get-FontName $file | Should -Be $fontName
+            Get-FontName $file | Should-Be $fontName
         }
     }
 
@@ -194,7 +194,7 @@ Describe 'Get-FontName' {
         It 'return fontName' {
             Mock Get-OTFName { return 'Dummy Regular' }
             $file = [System.IO.FileInfo]'dummy.otf'
-            Get-FontName $file | Should -Be 'Dummy Regular'
+            Get-FontName $file | Should-Be 'Dummy Regular'
         }
     }
 
@@ -213,7 +213,7 @@ Describe 'Get-FontName' {
         Context 'when <file>' -ForEach $installedFonts {
             It "return '<fontName>'" {
                 $name = Get-FontName $file
-                $name | Should -Be $fontName
+                $name | Should-Be $fontName
             }
         }
     }
@@ -222,16 +222,16 @@ Describe 'Get-FontName' {
 Describe 'Wait-ForCondition' {
     It 'when job completed, return value' {
         $ret = Wait-ForCondition { Start-Sleep 1; return 42 }
-        $ret.isError | Should -BeFalse
-        $ret.result | Should -Be 'Completed'
-        $ret.value | Should -Be 42
+        $ret.isError | Should-BeFalse
+        $ret.result | Should-Be 'Completed'
+        $ret.value | Should-Be 42
     }
 
     It 'when job timeout, return error' {
         $ret = Wait-ForCondition { Start-Sleep 10 } 1
-        $ret.isError | Should -BeTrue
-        $ret.result | Should -Be 'Timeout'
-        $ret.value | Should -BeNullOrEmpty
+        $ret.isError | Should-BeTrue
+        $ret.result | Should-Be 'Timeout'
+        $ret.value | Should-BeNull
     }
 
     It 'when job cancelled, return error' {
@@ -248,9 +248,9 @@ Describe 'Wait-ForCondition' {
             }
         }
         $ret = Wait-ForCondition { Start-Sleep 10 }
-        $ret.isError | Should -BeTrue
-        $ret.result | Should -Be 'Cancelled'
-        $ret.value | Should -BeNullOrEmpty
+        $ret.isError | Should-BeTrue
+        $ret.result | Should-Be 'Cancelled'
+        $ret.value | Should-BeNull
     }
 }
 
@@ -262,7 +262,7 @@ Describe 'Wait-ServiceStatus' {
             return $service
         }
         Wait-ServiceStatus 'FontCache' 'Stopped' ([TimeSpan]::New(0, 0, 0, 1))
-        Should -Invoke -CommandName Get-Service -Times 1 -Exactly -ParameterFilter { $ServiceName -eq 'FontCache' }
+        Should-Invoke -CommandName Get-Service -Times 1 -Exactly -ParameterFilter { $ServiceName -eq 'FontCache' }
     }
 }
 
@@ -273,8 +273,8 @@ Describe 'Wait-ServiceStopped' {
             $service | Add-Member -Name WaitForStatus -Type ScriptMethod -Value {}
             return $service
         }
-        Wait-ServiceStopped 'FontCache' | Should -BeTrue
-        Should -Invoke -CommandName Get-Service -Times 1 -Exactly -ParameterFilter { $ServiceName -eq 'FontCache' }
+        Wait-ServiceStopped 'FontCache' | Should-BeTrue
+        Should-Invoke -CommandName Get-Service -Times 1 -Exactly -ParameterFilter { $ServiceName -eq 'FontCache' }
     }
 
     It 'when initially timed out then stopped, return true' {
@@ -286,8 +286,8 @@ Describe 'Wait-ServiceStopped' {
                 throw [System.ServiceProcess.TimeoutException]::new('timeout')
             }
         }
-        Wait-ServiceStopped 'FontCache' | Should -BeTrue
-        Should -Invoke -CommandName Wait-ServiceStatus -Times 2 -Exactly -ParameterFilter { $ServiceName -eq 'FontCache' }
+        Wait-ServiceStopped 'FontCache' | Should-BeTrue
+        Should-Invoke -CommandName Wait-ServiceStatus -Times 2 -Exactly -ParameterFilter { $ServiceName -eq 'FontCache' }
     }
 }
 
@@ -359,22 +359,22 @@ Describe 'Resolve-UninstallDirectory' {
     It 'when specified directory exists, return it' {
         Mock Test-Path { $true }
 
-        Resolve-UninstallDirectory 'C:\exists' $null $null | Should -Be 'C:\exists'
+        Resolve-UninstallDirectory 'C:\exists' $null $null | Should-Be 'C:\exists'
 
-        Should -Invoke Test-Path -Times 1 -Exactly
-        Should -Invoke appdir -Times 0 -Exactly
+        Should-Invoke Test-Path -Times 1 -Exactly
+        Should-Invoke appdir -Times 0 -Exactly
     }
 
     It 'when app is missing, return specified directory' {
         Mock Test-Path { $false }
 
-        Resolve-UninstallDirectory 'C:\missing' $null '1.0' | Should -Be 'C:\missing'
+        Resolve-UninstallDirectory 'C:\missing' $null '1.0' | Should-Be 'C:\missing'
     }
 
     It 'when old_version is missing, return specified directory' {
         Mock Test-Path { $false }
 
-        Resolve-UninstallDirectory 'C:\missing' 'app' $null | Should -Be 'C:\missing'
+        Resolve-UninstallDirectory 'C:\missing' 'app' $null | Should-Be 'C:\missing'
     }
 
     It 'when no candidate is found, exit with error' {
@@ -383,8 +383,8 @@ Describe 'Resolve-UninstallDirectory' {
         Mock Exit-Process { throw $code }
         Mock error { Write-Host "called error(): $args" }
 
-        { Resolve-UninstallDirectory 'C:\missing' 'app' '1.0' } | Should -Throw 1
-        Should -Invoke error -Times 2 -Exactly
+        { Resolve-UninstallDirectory 'C:\missing' 'app' '1.0' } | Should-Throw 1
+        Should-Invoke error -Times 2 -Exactly
     }
 
     It 'when multiple candidate directories are found, exit with error' {
@@ -409,8 +409,8 @@ Describe 'Resolve-UninstallDirectory' {
         Mock Exit-Process { throw $code }
         Mock error { Write-Host "called error(): $args" }
 
-        { Resolve-UninstallDirectory 'C:\missing' 'app' '1.0' } | Should -Throw 1
-        Should -Invoke error -Times 4 -Exactly
+        { Resolve-UninstallDirectory 'C:\missing' 'app' '1.0' } | Should-Throw 1
+        Should-Invoke error -Times 4 -Exactly
     }
 
     It 'when one candidate is found and action is confirmed, return candidate' {
@@ -437,7 +437,7 @@ Describe 'Resolve-UninstallDirectory' {
                 isError = $false
             }
         }
-        Resolve-UninstallDirectory 'C:\missing' 'app' '1.0' | Should -Be 'C:\app\1.0\dir3'
+        Resolve-UninstallDirectory 'C:\missing' 'app' '1.0' | Should-Be 'C:\app\1.0\dir3'
     }
 
     It 'when one candidate is found and action is cancelled, exit with error' {
@@ -462,8 +462,8 @@ Describe 'Resolve-UninstallDirectory' {
         Mock Exit-Process { throw $code }
         Mock error { Write-Host "called error(): $args" }
 
-        { Resolve-UninstallDirectory 'C:\missing' 'app' '1.0' } | Should -Throw 1
-        Should -Invoke error -Times 0 -Exactly
+        { Resolve-UninstallDirectory 'C:\missing' 'app' '1.0' } | Should-Throw 1
+        Should-Invoke error -Times 0 -Exactly
     }
 }
 
@@ -485,16 +485,23 @@ Describe 'Install-Font' {
         }
 
         It 'then exit with error code 1 because it is already installed' {
-            { Install-Font 'dummy' } | Should -Throw 1
-            Should -Invoke -CommandName Get-ChildItem -Times 1 -Exactly
-            Should -Invoke -CommandName Remove-Item -Times 0 -Exactly
-            Should -Invoke -CommandName Copy-Item -Times 0 -Exactly
-            Should -Invoke -CommandName New-ItemProperty -Times 0 -Exactly
+            { Install-Font 'dummy' } | Should-Throw 1
+            Should-Invoke -CommandName Get-ChildItem -Times 1 -Exactly
+            Should-Invoke -CommandName Remove-Item -Times 0 -Exactly
+            Should-Invoke -CommandName Copy-Item -Times 0 -Exactly
+            Should-Invoke -CommandName New-ItemProperty -Times 0 -Exactly
+
+            Mock Get-AlreadyInstalledFontFamily { return @('') }
+            { Install-Font 'dummy' } | Should-Throw 1
+            Should-Invoke -CommandName Get-ChildItem -Times 2 -Exactly
+            Should-Invoke -CommandName Remove-Item -Times 0 -Exactly
+            Should-Invoke -CommandName Copy-Item -Times 0 -Exactly
+            Should-Invoke -CommandName New-ItemProperty -Times 0 -Exactly
         }
 
         Context 'and not installed' {
             BeforeAll {
-                Mock Get-AlreadyInstalledFontFamily { return @('') }
+                Mock Get-AlreadyInstalledFontFamily { return @() }
                 Mock Remove-Item { Write-Host "called Remove-Item: $($args[3])" }
             }
 
@@ -504,19 +511,19 @@ Describe 'Install-Font' {
                 }
 
                 It 'then exit with error code 1 because font file cannot be deleted' {
-                    { Install-Font 'dummy' } | Should -Throw 1
-                    Should -Invoke -CommandName Remove-Item -Times 1 -Exactly
-                    Should -Invoke -CommandName Test-Path -Times 1 -Exactly
-                    Should -Invoke -CommandName Copy-Item -Times 0 -Exactly
-                    Should -Invoke -CommandName New-ItemProperty -Times 0 -Exactly
+                    { Install-Font 'dummy' } | Should-Throw 1
+                    Should-Invoke -CommandName Remove-Item -Times 1 -Exactly
+                    Should-Invoke -CommandName Test-Path -Times 1 -Exactly
+                    Should-Invoke -CommandName Copy-Item -Times 0 -Exactly
+                    Should-Invoke -CommandName New-ItemProperty -Times 0 -Exactly
                 }
             }
 
             It 'then the installation is successful' {
-                Install-Font 'dummy' | Should -BeNullOrEmpty
-                Should -Invoke -CommandName Remove-Item -Times 1 -Exactly
-                Should -Invoke -CommandName Copy-Item -Times 1 -Exactly
-                Should -Invoke -CommandName New-ItemProperty -Times 1 -Exactly
+                Install-Font 'dummy' | Should-BeNull
+                Should-Invoke -CommandName Remove-Item -Times 1 -Exactly
+                Should-Invoke -CommandName Copy-Item -Times 1 -Exactly
+                Should-Invoke -CommandName New-ItemProperty -Times 1 -Exactly
             }
 
         }
@@ -547,21 +554,21 @@ Describe 'Uninstall-Font' {
                 }
 
                 It 'then exit with error code 1 because font file cannot be deleted' {
-                    { Uninstall-Font 'dummy' } | Should -Throw 1
-                    Should -Invoke -CommandName Remove-ItemProperty -Times 1 -Exactly
-                    Should -Invoke -CommandName Remove-Item -Times 1 -Exactly
-                    Should -Invoke -CommandName Test-Path -Times 2 -Exactly
+                    { Uninstall-Font 'dummy' } | Should-Throw 1
+                    Should-Invoke -CommandName Remove-ItemProperty -Times 1 -Exactly
+                    Should-Invoke -CommandName Remove-Item -Times 1 -Exactly
+                    Should-Invoke -CommandName Test-Path -Times 2 -Exactly
                 }
             }
 
             It 'then the uninstallation is successful with wait error' {
                 Mock warn { Write-Host "called warn(): $args" }
-                Uninstall-Font 'dummy' | Should -BeNullOrEmpty
-                Should -Invoke -CommandName Remove-ItemProperty -Times 1 -Exactly
-                Should -Invoke -CommandName Wait-ForCondition -Times 1 -Exactly
-                Should -Invoke -CommandName warn -Times 1 -Exactly
-                Should -Invoke -CommandName Remove-Item -Times 1 -Exactly
-                Should -Invoke -CommandName Stop-Service -Times 0 -Exactly
+                Uninstall-Font 'dummy' | Should-BeNull
+                Should-Invoke -CommandName Remove-ItemProperty -Times 1 -Exactly
+                Should-Invoke -CommandName Wait-ForCondition -Times 1 -Exactly
+                Should-Invoke -CommandName warn -Times 1 -Exactly
+                Should-Invoke -CommandName Remove-Item -Times 1 -Exactly
+                Should-Invoke -CommandName Stop-Service -Times 0 -Exactly
             }
         }
 
@@ -571,10 +578,10 @@ Describe 'Uninstall-Font' {
             }
 
             It 'then the uninstallation is successful with stop service' {
-                Uninstall-Font 'dummy' | Should -BeNullOrEmpty
-                Should -Invoke -CommandName Stop-Service -Times 1 -Exactly
-                Should -Invoke -CommandName Remove-ItemProperty -Times 1 -Exactly
-                Should -Invoke -CommandName Remove-Item -Times 1 -Exactly
+                Uninstall-Font 'dummy' | Should-BeNull
+                Should-Invoke -CommandName Stop-Service -Times 1 -Exactly
+                Should-Invoke -CommandName Remove-ItemProperty -Times 1 -Exactly
+                Should-Invoke -CommandName Remove-Item -Times 1 -Exactly
             }
         }
     }

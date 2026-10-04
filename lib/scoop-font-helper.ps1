@@ -272,7 +272,7 @@ function Install-Font([String] $Dir) {
     } | ForEach-Object {
         $fontFamilies = Invoke-Job ${function:Get-FontFamily} $_.FullName
         $alreadyInstalledFontFamilies = Get-AlreadyInstalledFontFamily $installedFontFamilies $fontFamilies
-        if ($alreadyInstalledFontFamilies -gt 0) {
+        if (@($alreadyInstalledFontFamilies).Count -gt 0) {
             error "Already exists font '$($alreadyInstalledFontFamilies | Select-Object -first 1)' in '$($_.FullName)'"
             Exit-Process 1
         }
