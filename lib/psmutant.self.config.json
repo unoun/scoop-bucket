@@ -1,0 +1,30 @@
+{
+    "$schema": "https://raw.githubusercontent.com/Fortigi/PSMutant/main/schemas/v1/config.schema.json",
+    "sandboxSubtrees": [
+        "lib"
+    ],
+    "mutate": [
+        "./lib/scoop-font-helper.ps1"
+    ],
+    "tests": {
+        "./lib/scoop-font-helper.ps1": [
+            "./lib/scoop-font-helper.Tests.ps1"
+        ]
+    },
+    "operators": [
+        "BinaryOperator",
+        "BooleanLiteral",
+        "NumberLiteral",
+        "NegationRemoval",
+        "ConditionalBoundary",
+        "ConditionForcing",
+        "ReturnValue"
+    ],
+    "coveredLinesOnly": true,
+    "thresholds": {
+        "high": 85,
+        "low": 70,
+        "break": 100
+    },
+    "reportPath": "ps-mutation.json"
+}
