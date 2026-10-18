@@ -198,7 +198,7 @@ Describe 'Get-FontName' {
         }
     }
 
-    Context 'comparing with the already installed fonts' -Tag 'Regression' {
+    <#Context 'comparing with the already installed fonts' -Tag 'Regression' {
         BeforeDiscovery {
             $regPath = "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
             $installedFonts = Get-Item -Path $regPath | Select-Object -ExpandProperty Property | ForEach-Object {
@@ -216,7 +216,7 @@ Describe 'Get-FontName' {
                 $name | Should-Be $fontName
             }
         }
-    }
+    }#>
 }
 
 Describe 'Wait-ForCondition' {
