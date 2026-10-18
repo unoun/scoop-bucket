@@ -1,17 +1,14 @@
 {
-    "version": "0.5.0",
-    "description": "Mutation testing for PowerShell using Pester and the PowerShell AST.",
+    "version": "0.6.0",
+    "description": "Mutation testing for PowerShell",
     "homepage": "https://github.com/Fortigi/PSMutant",
     "license": "MIT",
-    "url": "https://www.powershellgallery.com/api/v2/package/PSMutant/0.5.0#/PSMutant.zip",
-    "hash": "0dab736e8a978241ce9e8fab7bda67259a02f551fd0077fc4480760e5f965760",
+    "url": "https://www.powershellgallery.com/api/v2/package/PSMutant/0.6.0#/PSMutant.zip",
+    "hash": "da8e8dfc0ef7bb24a7d880c0b28e56776ae778eed418493fd3f498301fc0bfed",
     "psmodule": {
         "name": "PSMutant"
     },
-    "checkver": {
-        "url": "https://www.powershellgallery.com/packages/PSMutant/",
-        "regex": "PSMutant\\s+([\\d.]+)"
-    },
+    "checkver": "github",
     "autoupdate": {
         "url": "https://www.powershellgallery.com/api/v2/package/PSMutant/$version#/PSMutant.zip"
     }
