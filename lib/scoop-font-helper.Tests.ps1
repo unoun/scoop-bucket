@@ -1,5 +1,4 @@
 #Requires -Version 5
-#Requires -Modules @{ ModuleName='Pester'; ModuleVersion='6.2' }
 
 [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
     'PSAvoidUsingWriteHost',
@@ -7,6 +6,23 @@
     Justification = 'Write-Host is used for test diagnostics.'
 )]
 param()
+
+BeforeDiscovery {
+    $pester = Get-Module Pester | Sort-Object Version -Descending | Select-Object -First 1
+    $manifest = Join-Path $pester.ModuleBase 'Pester.psd1'
+    $loadedVersion = if ($pester.Version -gt [version]'0.0') {
+        $pester.Version
+    }
+    elseif (Test-Path -LiteralPath $manifest) {
+        [version](Import-PowerShellDataFile -LiteralPath $manifest).ModuleVersion
+    }
+    else {
+        [version]'0.0'
+    }
+    if ($loadedVersion -lt [version]'6.2') {
+        throw "Pester 6.2 or later is required (loaded: $loadedVersion)."
+    }
+}
 
 BeforeAll {
     . $PSCommandPath.Replace('.Tests.ps1', '.ps1')
@@ -220,15 +236,30 @@ Describe 'Get-FontName' {
 }
 
 Describe 'Wait-ForCondition' {
+    BeforeEach {
+        Mock Get-Host {
+            $RawUI = [PSCustomObject]@{
+                KeyAvailable = $false
+            }
+            $RawUI | Add-Member -Name FlushInputBuffer -Type ScriptMethod -Value {}
+            $RawUI | Add-Member -Name ReadKey -Type ScriptMethod -Value { return @{ Character = 0 } }
+            return [PSCustomObject]@{
+                UI = [PSCustomObject]@{
+                    RawUI = $RawUI
+                }
+            }
+        }
+    }
+
     It 'when job completed, return value' {
-        $ret = Wait-ForCondition { Start-Sleep 1; return 42 }
+        $ret = Wait-ForCondition -ConditionScript { Start-Sleep 1; return 42 }
         $ret.isError | Should-BeFalse
         $ret.result | Should-Be 'Completed'
         $ret.value | Should-Be 42
     }
 
     It 'when job timeout, return error' {
-        $ret = Wait-ForCondition { Start-Sleep 10 } 1
+        $ret = Wait-ForCondition -ConditionScript { Start-Sleep 2 } -TimeoutSeconds 1
         $ret.isError | Should-BeTrue
         $ret.result | Should-Be 'Timeout'
         $ret.value | Should-BeNull
@@ -247,7 +278,7 @@ Describe 'Wait-ForCondition' {
                 }
             }
         }
-        $ret = Wait-ForCondition { Start-Sleep 10 }
+        $ret = Wait-ForCondition -ConditionScript { Start-Sleep 1 }
         $ret.isError | Should-BeTrue
         $ret.result | Should-Be 'Cancelled'
         $ret.value | Should-BeNull
