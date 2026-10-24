@@ -133,6 +133,23 @@ Describe 'Get-FontCount' {
             Get-FontCount $file | Should-Be $numOfFonts
         }
     }
+    Context 'when the file does not exist' {
+        It 'preserves the file open error' {
+            $file = [System.IO.FileInfo](
+                Join-Path $TestDrive 'missing.ttc'
+            )
+
+            $exception = $null
+            try {
+                Get-FontCount $file | Out-Null
+            }
+            catch {
+                $exception = $_.Exception.GetBaseException()
+            }
+
+            $exception | Should-HaveType ([System.IO.FileNotFoundException])
+        }
+    }
 }
 
 Describe 'Get-OTFName' {
@@ -194,6 +211,51 @@ Describe 'Get-TTCName' {
             Get-TTCName 'dummy' | Should-Be $fontName
         }
     }
+
+    Context 'when the joined name length is exactly <length>' -ForEach @(
+        @{ Length = 255; ExpectSecondName = $true }
+        @{ Length = 256; ExpectSecondName = $false }
+    ) {
+        It 'handles the boundary correctly' {
+            $script:boundaryLength = $length
+            $script:invokeJobCount = 0
+
+            Mock Get-FontCount { return 3 }
+            Mock Invoke-Job {
+                $script:invokeJobCount++
+                if ($script:invokeJobCount -eq 1) {
+                    $padding = [System.String]::new(
+                        [char]'x',
+                        ($script:boundaryLength - 2)
+                    )
+                    return @{
+                        FamilyName      = 'Family'
+                        FaceName        = 'Regular'
+                        Win32FamilyName = 'F'
+                        Win32FaceName   = $padding
+                    }
+                }
+                return @{
+                    FamilyName      = 'Family'
+                    FaceName        = 'Regular'
+                    Win32FamilyName = 'F'
+                    Win32FaceName   = 'R'
+                }
+            }
+
+            $padding = [System.String]::new([char]'x', ($length - 2))
+            $firstName = "F $padding"
+
+            $expected = if ($expectSecondName) {
+                "$firstName & F R"
+            }
+            else {
+                $firstName
+            }
+
+            Get-TTCName 'dummy' | Should-Be $expected
+        }
+    }
 }
 
 Describe 'Get-FontName' {
@@ -211,6 +273,15 @@ Describe 'Get-FontName' {
             Mock Get-OTFName { return 'Dummy Regular' }
             $file = [System.IO.FileInfo]'dummy.otf'
             Get-FontName $file | Should-Be 'Dummy Regular'
+        }
+    }
+
+    Context 'when unsupported extensions' {
+        It 'returns null' {
+            Mock Get-OTFName { return 'Unexpected font name' }
+            $file = [System.IO.FileInfo]'dummy.xyz'
+            Get-FontName $file | Should-BeNull
+            Should-Invoke Get-OTFName -Times 0 -Exactly
         }
     }
 
@@ -235,6 +306,31 @@ Describe 'Get-FontName' {
     }#>
 }
 
+Describe 'Read-AvailableConsoleKey' {
+    It 'when no key is available, return null without reading a key' {
+        $script:readKeyCount = 0
+
+        Mock Get-Host {
+            $rawUI = [PSCustomObject]@{
+                KeyAvailable = $false
+            }
+            $rawUI | Add-Member -Name ReadKey -MemberType ScriptMethod -Value {
+                $script:readKeyCount++
+                return @{ Character = 27 }
+            }
+
+            return [PSCustomObject]@{
+                UI = [PSCustomObject]@{
+                    RawUI = $rawUI
+                }
+            }
+        }
+
+        Read-AvailableConsoleKey | Should-BeNull
+        $script:readKeyCount | Should-Be 0
+    }
+}
+
 Describe 'Wait-ForCondition' {
     BeforeEach {
         Mock Get-Host {
@@ -252,17 +348,44 @@ Describe 'Wait-ForCondition' {
     }
 
     It 'when job completed, return value' {
-        $ret = Wait-ForCondition -ConditionScript { Start-Sleep 1; return 42 }
+        $ret = Wait-ForCondition -ConditionScript { Start-Sleep 1; return 42 } -TimeoutSeconds 2
         $ret.isError | Should-BeFalse
         $ret.result | Should-Be 'Completed'
         $ret.value | Should-Be 42
     }
 
     It 'when job timeout, return error' {
+        $script:baseTime = [datetime]'2026-01-01T00:00:00'
+        $script:timeSequence = @(
+            $script:baseTime,
+            $script:baseTime.AddMilliseconds(500),
+            $script:baseTime.AddSeconds(1)
+        )
+        $script:keySequence = @(
+            $null,
+            $null,
+            27
+        )
+        $script:timeIndex = 0
+        $script:keyIndex = 0
+
+        Mock Get-Date {
+            $dateTime = $script:timeSequence[$script:timeIndex]
+            $script:timeIndex++
+            return $dateTime
+        }
+        Mock Read-AvailableConsoleKey {
+            $key = $script:keySequence[$script:keyIndex]
+            $script:keyIndex++
+            return $key
+        }
+        Mock Start-Sleep {}
+
         $ret = Wait-ForCondition -ConditionScript { Start-Sleep 2 } -TimeoutSeconds 1
         $ret.isError | Should-BeTrue
         $ret.result | Should-Be 'Timeout'
         $ret.value | Should-BeNull
+        Should-Invoke -CommandName Start-Sleep -Times 1 -Exactly -ParameterFilter { $Milliseconds -eq 500 }
     }
 
     It 'when job cancelled, return error' {
@@ -278,7 +401,7 @@ Describe 'Wait-ForCondition' {
                 }
             }
         }
-        $ret = Wait-ForCondition -ConditionScript { Start-Sleep 1 }
+        $ret = Wait-ForCondition -ConditionScript { Start-Sleep 1 } -TimeoutSeconds 2
         $ret.isError | Should-BeTrue
         $ret.result | Should-Be 'Cancelled'
         $ret.value | Should-BeNull
@@ -318,7 +441,7 @@ Describe 'Wait-ServiceStopped' {
             }
         }
         Wait-ServiceStopped 'FontCache' | Should-BeTrue
-        Should-Invoke -CommandName Wait-ServiceStatus -Times 2 -Exactly -ParameterFilter { $ServiceName -eq 'FontCache' }
+        Should-Invoke -CommandName Wait-ServiceStatus -Times 2 -Exactly -ParameterFilter { ($ServiceName -eq 'FontCache') -and ($Timeout -eq ([TimeSpan]::New(0, 0, 0, 1))) }
     }
 }
 
@@ -354,7 +477,7 @@ Describe 'Confirm-Action' {
     ) {
         It 'return <result>' {
             $script:character = $char
-            $ret = Confirm-Action
+            $ret = Confirm-Action -TimeoutSeconds 1
             if ($isError) {
                 $ret.isError | Should-BeTrue
             }
@@ -370,7 +493,33 @@ Describe 'Confirm-Action' {
         @{ timeoutIsError = $false }
     ) {
         It 'return Timeout with isError:<timeoutIsError>' {
-            $ret = Confirm-Action $timeoutIsError 1
+            $script:baseTime = [datetime]'2026-01-01T00:00:00'
+            $script:timeSequence = @(
+                $script:baseTime,
+                $script:baseTime.AddMilliseconds(500),
+                $script:baseTime.AddSeconds(1)
+            )
+            $script:keySequence = @(
+                $null,
+                $null,
+                27
+            )
+            $script:timeIndex = 0
+            $script:keyIndex = 0
+
+            Mock Get-Date {
+                $dateTime = $script:timeSequence[$script:timeIndex]
+                $script:timeIndex++
+                return $dateTime
+            }
+            Mock Read-AvailableConsoleKey {
+                $key = $script:keySequence[$script:keyIndex]
+                $script:keyIndex++
+                return $key
+            }
+            Mock Start-Sleep {}
+
+            $ret = Confirm-Action -TimeoutIsError $timeoutIsError -TimeoutSeconds 1
             if ($timeoutIsError) {
                 $ret.isError | Should-BeTrue
             }
@@ -378,6 +527,7 @@ Describe 'Confirm-Action' {
                 $ret.isError | Should-BeFalse
             }
             $ret.result | Should-Be 'Timeout'
+            Should-Invoke -CommandName Start-Sleep -Times 1 -Exactly -ParameterFilter { $Milliseconds -eq 500 }
         }
     }
 }
@@ -409,13 +559,21 @@ Describe 'Resolve-UninstallDirectory' {
     }
 
     It 'when no candidate is found, exit with error' {
+        $script:errorMessages = @()
+
         Mock Test-Path { $false }
         Mock Get-ChildItem { @() }
         Mock Exit-Process { throw $code }
-        Mock error { Write-Host "called error(): $args" }
+        Mock error {
+            $script:errorMessages += [string]$args[0]
+            Write-Host "called error(): $args"
+        }
 
         { Resolve-UninstallDirectory 'C:\missing' 'app' '1.0' } | Should-Throw 1
         Should-Invoke error -Times 2 -Exactly
+        $script:errorMessages.Count | Should-Be 2
+        $script:errorMessages[0] | Should-Be "Couldn't resolve the uninstall directory."
+        $script:errorMessages[1] | Should-Be "Specified: 'C:\missing'"
     }
 
     It 'when multiple candidate directories are found, exit with error' {
@@ -496,6 +654,28 @@ Describe 'Resolve-UninstallDirectory' {
         { Resolve-UninstallDirectory 'C:\missing' 'app' '1.0' } | Should-Throw 1
         Should-Invoke error -Times 0 -Exactly
     }
+
+    It 'when candidate font is not installed, ignore it' {
+        Mock Test-Path { $false }
+        Mock Get-ChildItem {
+            @(
+                [PSCustomObject]@{
+                    Name          = 'font5.otf'
+                    Extension     = '.otf'
+                    DirectoryName = 'C:\app\1.0\dir5'
+                }
+            )
+        }
+        Mock Confirm-Action {
+            return @{
+                isError = $false
+            }
+        }
+        Mock Exit-Process { throw $code }
+
+        { Resolve-UninstallDirectory 'C:\missing' 'app' '1.0' } | Should-Throw 1
+        Should-Invoke Confirm-Action -Times 0 -Exactly
+    }
 }
 
 Describe 'Install-Font' {
@@ -530,6 +710,24 @@ Describe 'Install-Font' {
             Should-Invoke -CommandName New-ItemProperty -Times 0 -Exactly
         }
 
+        It 'reports only the first already-installed font family' {
+            $script:errorMessages = @()
+
+            Mock Get-InstalledFontFamily { return @('Existing A', 'Existing B') }
+            Mock Get-FontFamily { return @('Existing A', 'Existing B') }
+            Mock Get-AlreadyInstalledFontFamily {
+                return @('Existing A', 'Existing B')
+            }
+            Mock error {
+                $script:errorMessages += [string]$args[0]
+            }
+
+            { Install-Font 'dummy' } | Should-Throw 1
+
+            $script:errorMessages.Count | Should-Be 1
+            $script:errorMessages[0] | Should-Be "Already exists font 'Existing A' in '$($file)'"
+        }
+
         Context 'and not installed' {
             BeforeAll {
                 Mock Get-AlreadyInstalledFontFamily { return @() }
@@ -556,7 +754,6 @@ Describe 'Install-Font' {
                 Should-Invoke -CommandName Copy-Item -Times 1 -Exactly
                 Should-Invoke -CommandName New-ItemProperty -Times 1 -Exactly
             }
-
         }
     }
 }
@@ -596,10 +793,41 @@ Describe 'Uninstall-Font' {
                 Mock warn { Write-Host "called warn(): $args" }
                 Uninstall-Font 'dummy' | Should-BeNull
                 Should-Invoke -CommandName Remove-ItemProperty -Times 1 -Exactly
-                Should-Invoke -CommandName Wait-ForCondition -Times 1 -Exactly
+                Should-Invoke -CommandName Wait-ForCondition -Times 1 -Exactly -ParameterFilter { $TimeoutSeconds -eq 60 }
                 Should-Invoke -CommandName warn -Times 1 -Exactly
                 Should-Invoke -CommandName Remove-Item -Times 1 -Exactly
                 Should-Invoke -CommandName Stop-Service -Times 0 -Exactly
+            }
+
+            It 'when FontCache is stopped, skip waiting' {
+                Mock Get-Service {
+                    [PSCustomObject]@{ Status = 'Stopped' }
+                }
+                Mock Test-Path { $false }
+                Mock warn { Write-Host "called warn(): $args" }
+
+                Uninstall-Font 'dummy' | Should-BeNull
+
+                Should-Invoke -CommandName Wait-ForCondition -Times 0 -Exactly
+                Should-Invoke -CommandName Stop-Service -Times 0 -Exactly
+                Should-Invoke -CommandName warn -Times 0 -Exactly
+            }
+
+            It 'when FontCache wait succeeds, do not warn' {
+                Mock Get-Service {
+                    [PSCustomObject]@{ Status = 'Running' }
+                }
+                Mock Test-Path { $false }
+                Mock Wait-ForCondition {
+                    return @{ isError = $false; result = 'Completed' }
+                }
+                Mock warn { Write-Host "called warn(): $args" }
+
+                Uninstall-Font 'dummy' | Should-BeNull
+
+                Should-Invoke -CommandName Wait-ForCondition -Times 1 -Exactly -ParameterFilter { $TimeoutSeconds -eq 60 }
+                Should-Invoke -CommandName warn -Times 0 -Exactly
+                Should-Invoke -CommandName Remove-Item -Times 1 -Exactly
             }
         }
 

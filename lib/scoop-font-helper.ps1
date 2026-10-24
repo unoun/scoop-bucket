@@ -98,17 +98,27 @@ function Get-TTCName([System.IO.FileInfo] $File) {
     return $fontName
 }
 
+function Test-FontExtension([String] $Extension) {
+    return $Extension -in @('.otf', '.ttf', '.ttc')
+}
+
 function Get-FontName([System.IO.FileInfo] $File) {
-    if ($File.Extension -eq '.otf') {
-        $fontName = Get-OTFName $File
-    }
-    elseif ($File.Extension -eq '.ttf') {
-        $fontName = Get-TTFName $File
-    }
-    elseif ($File.Extension -eq '.ttc') {
-        $fontName = Get-TTCName $File
+    $fontName = $null
+    switch ($File.Extension) {
+        '.otf' { $fontName = Get-OTFName $File }
+        '.ttf' { $fontName = Get-TTFName $File }
+        '.ttc' { $fontName = Get-TTCName $File }
     }
     return $fontName
+}
+
+function Read-AvailableConsoleKey {
+    $key = $null
+    $rawUI = (Get-Host).UI.RawUI
+    if ($rawUI.KeyAvailable) {
+        $key = $rawUI.ReadKey('IncludeKeyUp,NoEcho').Character
+    }
+    return $key
 }
 
 function Wait-ForCondition([ScriptBlock] $ConditionScript, [int] $TimeoutSeconds = 60, [Object[]] $ScriptArgumentList) {
@@ -123,14 +133,12 @@ function Wait-ForCondition([ScriptBlock] $ConditionScript, [int] $TimeoutSeconds
         $job = Start-Job -ScriptBlock $ConditionScript -ArgumentList $ScriptArgumentList
         (Get-Host).UI.RawUI.FlushInputBuffer()
         while ($true) {
-            if ((Get-Host).UI.RawUI.KeyAvailable) {
-                $keyinfo = (Get-Host).UI.RawUI.ReadKey('IncludeKeyUp,NoEcho')
-                # ESC
-                if (27 -eq $keyinfo.Character) {
-                    $ret.isError = $true
-                    $ret.result = 'Cancelled'
-                    break
-                }
+            $key = Read-AvailableConsoleKey
+            # ESC
+            if (27 -eq $key) {
+                $ret.isError = $true
+                $ret.result = 'Cancelled'
+                break
             }
             if ((Get-Date) -ge $endTime) {
                 $ret.isError = $true
@@ -186,24 +194,22 @@ function Confirm-Action([bool] $TimeoutIsError = $true, [int] $TimeoutSeconds = 
     try {
         (Get-Host).UI.RawUI.FlushInputBuffer()
         while ($true) {
-            if ((Get-Host).UI.RawUI.KeyAvailable) {
-                $keyinfo = (Get-Host).UI.RawUI.ReadKey('IncludeKeyUp,NoEcho')
-                if ('y' -ieq $keyInfo.Character) {
-                    $ret.isError = $false
-                    $ret.result = 'Y'
-                    break
-                }
-                if ('n' -ieq $keyInfo.Character) {
-                    $ret.isError = $true
-                    $ret.result = 'N'
-                    break
-                }
-                # ESC
-                if (27 -eq $keyinfo.Character) {
-                    $ret.isError = $true
-                    $ret.result = 'Cancelled'
-                    break
-                }
+            $key = Read-AvailableConsoleKey
+            if ('y' -ieq $key) {
+                $ret.isError = $false
+                $ret.result = 'Y'
+                break
+            }
+            if ('n' -ieq $key) {
+                $ret.isError = $true
+                $ret.result = 'N'
+                break
+            }
+            # ESC
+            if (27 -eq $key) {
+                $ret.isError = $true
+                $ret.result = 'Cancelled'
+                break
             }
             if ((Get-Date) -ge $endTime) {
                 $ret.isError = $TimeoutIsError
@@ -227,7 +233,7 @@ function Resolve-UninstallDirectory([String] $Dir, [String] $App = $null, [Strin
     $appRoot = "$(appdir $App)\$OldVersion"
     $candidates = @(
         Get-ChildItem $appRoot -Recurse | Where-Object {
-            $_.Extension -eq '.otf' -or $_.Extension -eq '.ttf' -or $_.Extension -eq '.ttc'
+            Test-FontExtension $_.Extension
         } | ForEach-Object {
             $fontFile = "$fontsDir\$($_.Name)"
             if (Test-Path $fontFile) {
@@ -268,7 +274,7 @@ function Install-Font([String] $Dir) {
     $installedFontFamilies = Invoke-Job ${function:Get-InstalledFontFamily}
     New-Item $fontsDir -ItemType Directory -ErrorAction SilentlyContinue
     Get-ChildItem $Dir -Recurse | Where-Object {
-        $_.Extension -eq '.otf' -or $_.Extension -eq '.ttf' -or $_.Extension -eq '.ttc'
+        Test-FontExtension $_.Extension
     } | ForEach-Object {
         $fontFamilies = Invoke-Job ${function:Get-FontFamily} $_.FullName
         $alreadyInstalledFontFamilies = Get-AlreadyInstalledFontFamily $installedFontFamilies $fontFamilies
@@ -278,7 +284,7 @@ function Install-Font([String] $Dir) {
         }
     }
     Get-ChildItem $Dir -Recurse | Where-Object {
-        $_.Extension -eq '.otf' -or $_.Extension -eq '.ttf' -or $_.Extension -eq '.ttc'
+        Test-FontExtension $_.Extension
     } | ForEach-Object {
         $fontFile = "$fontsDir\$($_.Name)"
         Remove-Item $fontFile -ErrorAction SilentlyContinue
@@ -289,7 +295,7 @@ function Install-Font([String] $Dir) {
         Copy-Item $_.FullName -Destination $fontsDir
     }
     Get-ChildItem $Dir -Recurse | Where-Object {
-        $_.Extension -eq '.otf' -or $_.Extension -eq '.ttf' -or $_.Extension -eq '.ttc'
+        Test-FontExtension $_.Extension
     } | ForEach-Object {
         $fontName = Get-FontName $_
         info "Installing font $($_.Name) -> $fontName"
@@ -304,7 +310,7 @@ function Uninstall-Font([String] $Dir) {
     $fontsDir = "$env:LOCALAPPDATA\Microsoft\Windows\Fonts"
     $regPath = "HKCU:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts"
     Get-ChildItem $Dir -Recurse | Where-Object {
-        $_.Extension -eq '.otf' -or $_.Extension -eq '.ttf' -or $_.Extension -eq '.ttc'
+        Test-FontExtension $_.Extension
     } | ForEach-Object {
         $fontName = Get-FontName $_
         info "Uninstalling font $($_.Name) -> $fontName"
@@ -321,7 +327,7 @@ function Uninstall-Font([String] $Dir) {
         }
     }
     Get-ChildItem $Dir -Recurse | Where-Object {
-        $_.Extension -eq '.otf' -or $_.Extension -eq '.ttf' -or $_.Extension -eq '.ttc'
+        Test-FontExtension $_.Extension
     } | ForEach-Object {
         $fontFile = "$fontsDir\$($_.Name)"
         Remove-Item $fontFile -ErrorAction SilentlyContinue
