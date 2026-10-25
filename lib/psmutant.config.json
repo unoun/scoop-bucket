@@ -33,7 +33,8 @@
         "lib/scoop-font-helper.ps1:Get-FontCount:$null -ne $br -> $false": "BinaryReader is local and its underlying FileStream is explicitly closed and disposed in the finally block; skipping BinaryReader disposal does not change observable function behavior.",
         "lib/scoop-font-helper.ps1:Get-FontCount:$null -ne $fr -> $false": "BinaryReader.Close and Dispose already close the underlying FileStream, so the separate FileStream disposal is redundant.",
         "lib/scoop-font-helper.ps1:128:$true -> $false": "The initial isError value is overwritten on every normal exit path before the result is returned.",
-        "lib/scoop-font-helper.ps1:191:$true -> $false": "The initial isError value is overwritten on every normal exit path before the result is returned."
+        "lib/scoop-font-helper.ps1:191:$true -> $false": "The initial isError value is overwritten on every normal exit path before the result is returned.",
+        "lib/scoop-font-helper.ps1:255:0 -> (-1)": "The candidate count is checked to be exactly one before indexing, so [0] and [-1] return the same sole candidate."
     },
     "thresholds": {
         "high": 85,
