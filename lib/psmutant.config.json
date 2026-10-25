@@ -24,7 +24,9 @@
         "ComparisonOperator",
         "CaseSensitivity",
         "BitwiseOperator",
-        "StringOperatorRemoval"
+        "StringOperatorRemoval",
+        "NumberBoundary",
+        "ArithmeticOperator"
     ],
     "equivalents": {
         "lib/scoop-font-helper.ps1:Get-FontCount:[BitConverter]::IsLittleEndian -> $true": "This script targets Windows font APIs and paths; supported Windows runtimes are little-endian.",
